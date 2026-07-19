@@ -1,0 +1,19 @@
+<div id="profile">
+    <h2>Campaign Context</h2>
+    {% if saved %}<p class="saved-notice">Saved.</p>{% endif %}
+    <form hx-put="/profile" hx-target="#profile">
+        <label for="campaign_context">Campaign Context</label>
+        <textarea id="campaign_context" name="campaign_context">{{ profile.campaign_context }}</textarea>
+
+        <h3>Unlocked Scopes</h3>
+        {% for scope_key, label in scopes %}
+        <label>
+            <input type="checkbox" name="unlocked_scope_keys" value="{{ scope_key }}"
+                   {% if scope_key in profile.unlocked_scope_keys %}checked{% endif %} />
+            {{ label }}
+        </label>
+        {% endfor %}
+
+        <button type="submit">Save</button>
+    </form>
+</div>

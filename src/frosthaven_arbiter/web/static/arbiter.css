@@ -1,0 +1,11 @@
+body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; }
+.message { border: 1px solid #ccc; border-radius: 0.5rem; padding: 0.75rem; margin: 0.5rem 0; }
+.outcome-ruling { border-color: #2f7d32; background: #eaf6ea; }
+.outcome-abstention { border-color: #b45309; background: #fdf3e3; }
+.badge { display: inline-block; font-weight: bold; padding: 0.1rem 0.5rem; border-radius: 0.3rem; margin-bottom: 0.3rem; }
+.badge-ruling { background: #2f7d32; color: white; }
+.badge-abstention { background: #b45309; color: white; }
+.citations { font-size: 0.85rem; color: #444; }
+.locked-notice { font-style: italic; color: #b45309; }
+textarea { width: 100%; min-height: 4rem; }

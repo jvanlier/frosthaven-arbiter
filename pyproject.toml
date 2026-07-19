@@ -1,0 +1,62 @@
+[project]
+name = "frosthaven-arbiter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jori", email = "jori@nomail" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "fastapi>=0.139.2",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "markdown-it-py>=4.2.0",
+    "mdit-py-plugins>=0.6.1",
+    "numpy>=2.5.1",
+    "pydantic>=2.13.4",
+    "python-multipart>=0.0.32",
+    "uvicorn>=0.51.0",
+]
+
+[project.scripts]
+frosthaven-arbiter = "frosthaven_arbiter:main"
+
+[build-system]
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.9",
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.15.22",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "ARG", "A"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportUnannotatedClassAttribute = false
+reportUnusedCallResult = false
+reportAny = false
+reportImplicitStringConcatenation = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportMissingTypeStubs = false
+reportMissingTypeArgument = false

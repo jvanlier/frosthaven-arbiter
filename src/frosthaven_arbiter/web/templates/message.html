@@ -1,0 +1,19 @@
+{% if outcome.__class__.__name__ == "Ruling" %}
+<div class="message message-arbiter outcome-ruling">
+    <span class="badge badge-ruling">Ruling</span>
+    <p>{{ outcome.text }}</p>
+    <ul class="citations">
+        {% for citation in outcome.citations %}
+        <li>[{{ citation.citation_id }}] {{ citation.authority_label }} — {{ citation.heading_path | join(" > ") }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="message message-arbiter outcome-abstention">
+    <span class="badge badge-abstention">Abstention</span>
+    <p>{{ outcome.explanation }}</p>
+    {% if outcome.locked_scope_labels %}
+    <p class="locked-notice">Relevant content is locked: {{ outcome.locked_scope_labels | join(", ") }}</p>
+    {% endif %}
+</div>
+{% endif %}

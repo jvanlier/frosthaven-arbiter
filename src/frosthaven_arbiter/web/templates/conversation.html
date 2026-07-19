@@ -1,0 +1,30 @@
+<div id="conversation">
+    <h2>{{ conversation.title or ("Conversation " ~ conversation.id) }}</h2>
+    <div id="messages">
+        {% for message in conversation.messages %}
+        <div class="message message-{{ message.role }} outcome-{{ message.outcome_kind or 'none' }}">
+            <p>{{ message.content }}</p>
+            {% if message.citations %}
+            <ul class="citations">
+                {% for citation in message.citations %}
+                <li>
+                    <a href="/citations/{{ message.id }}/{{ citation.citation_id }}">
+                        [{{ citation.citation_id }}] {{ citation.authority_label }}
+                        {{ citation.heading_path | join(" > ") }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <form hx-post="/conversations/{{ conversation.id }}/questions" hx-target="#messages" hx-swap="beforeend">
+        <label for="question">Ask a rules question</label>
+        <textarea id="question" name="question" required></textarea>
+        <button type="submit">Ask the Arbiter</button>
+    </form>
+    <button hx-delete="/conversations/{{ conversation.id }}" hx-target="#messages" hx-swap="innerHTML">
+        Clear conversation
+    </button>
+</div>

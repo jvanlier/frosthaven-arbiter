@@ -1,0 +1,40 @@
+[paths]
+database = "var/arbiter.sqlite3"
+snapshots = "var/sources"
+prompt = "config/arbitration-prompt.txt"
+
+[web]
+host = "127.0.0.1"
+port = 8080
+
+[models.embedding]
+base_url = "http://127.0.0.1:8081/v1"
+model_path = "/path/to/embedding.gguf"
+timeout_seconds = 120
+batch_size = 32
+
+[models.chat]
+base_url = "http://127.0.0.1:8082/v1"
+model_path = "/path/to/chat.gguf"
+timeout_seconds = 600
+context_size = 32768
+temperature = 0.1
+seed = 1
+
+[retrieval]
+lexical_candidates = 30
+semantic_candidates = 30
+final_chunks = 8
+rrf_k = 60
+evidence_token_budget = 6000
+adjacency_limit = 2
+
+[sources.rulebook]
+canonical_url = "https://pikdonker.github.io/frosthaven-rule-book/"
+repository = "pikdonker/frosthaven-rule-book"
+path = "index.md"
+
+[sources.faq]
+canonical_url = "https://cephalofairgames.github.io/frosthaven-faq/"
+repository = "CephalofairGames/frosthaven-faq"
+path = "index.md"
