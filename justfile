@@ -32,3 +32,13 @@ serve-embed:
         -ngl 999 \
         --port 8081 \
         --host 127.0.0.1
+
+lint: lint-python lint-web
+
+lint-python:
+    uv run ruff format --check .
+    uv run ruff check .
+    uv run pyright
+
+lint-web:
+    uv run djlint src/frosthaven_arbiter/web/templates
