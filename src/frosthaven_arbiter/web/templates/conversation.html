@@ -20,11 +20,22 @@
         </div>
         {% endfor %}
     </div>
-    <form hx-post="/conversations/{{ conversation.id }}/questions" hx-target="#messages" hx-swap="beforeend">
+    <form
+        class="question-form"
+        method="post"
+        action="/conversations/{{ conversation.id }}/questions"
+        data-stream-url="/conversations/{{ conversation.id }}/questions/stream"
+        data-conversation-id="{{ conversation.id }}">
         <label for="question">Ask a rules question</label>
         <textarea id="question" name="question" required></textarea>
         <button type="submit">Ask the Arbiter</button>
     </form>
+    <div class="loading-overlay" hidden>
+        <div class="loading-card">
+            <div class="spinner" aria-hidden="true"></div>
+            <p class="loading-status" role="status" aria-live="polite">Searching the rulebook and FAQ</p>
+        </div>
+    </div>
     <button hx-delete="/conversations/{{ conversation.id }}" hx-target="#messages" hx-swap="innerHTML">
         Clear conversation
     </button>

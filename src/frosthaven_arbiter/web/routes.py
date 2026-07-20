@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from frosthaven_arbiter.web.app import AppState
 
@@ -71,6 +74,75 @@ async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
             "titling_started": result.titling_started,
         },
     )
+
+
+@router.post("/conversations/{conversation_id}/questions/stream")
+async def ask_question_stream(request: Request, conversation_id: int) -> StreamingResponse:
+    state = _state(request)
+    form = await request.form()
+    question = str(form.get("question", "")).strip()
+
+    async def error_stream(message: str):
+        yield json.dumps({"type": "error", "message": message}) + "\n"
+
+    if not question:
+        return StreamingResponse(
+            error_stream("A question is required."), media_type="application/x-ndjson", status_code=400
+        )
+
+    queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
+
+    def on_progress(stage: str, message: str) -> None:
+        # `Arbiter.ask()` runs as a task on this same event loop, so the
+        # callback fires on this loop/thread directly; no cross-thread
+        # scheduling is needed, and using it here would reorder/drop
+        # events relative to the queue.put() calls below.
+        queue.put_nowait((stage, message))
+
+    async def run_arbitration():
+        try:
+            result = await state.arbiter.ask(conversation_id, question, on_progress=on_progress)
+            html = state.templates.env.get_template("message.html").render(
+                {
+                    "outcome": result.outcome,
+                    "conversation_id": conversation_id,
+                    "message_id": result.message_id,
+                    "titling_started": False,
+                }
+            )
+            result_payload = {
+                "type": "result",
+                "html": html,
+                "titling_started": result.titling_started,
+            }
+            await queue.put(("__result__", json.dumps(result_payload)))
+        except Exception:
+            error_payload = {"type": "error", "message": "The Arbiter could not process that question."}
+            await queue.put(("__error__", json.dumps(error_payload)))
+        finally:
+            await queue.put(("__done__", ""))
+
+    task = asyncio.create_task(run_arbitration())
+    state.streaming_tasks.add(task)
+
+    def _discard(finished_task: asyncio.Task) -> None:
+        state.streaming_tasks.discard(finished_task)
+        if not finished_task.cancelled():
+            finished_task.exception()
+
+    task.add_done_callback(_discard)
+
+    async def event_stream():
+        while True:
+            stage, payload = await queue.get()
+            if stage == "__done__":
+                break
+            if stage in ("__result__", "__error__"):
+                yield payload + "\n"
+            else:
+                yield json.dumps({"type": "status", "stage": stage, "message": payload}) + "\n"
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
 @router.delete("/conversations/{conversation_id}")

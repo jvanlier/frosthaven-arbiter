@@ -7,4 +7,5 @@ var/
 .pytest_cache/
 .ruff_cache/
 .basedpyright/
+.coverage
 dist/

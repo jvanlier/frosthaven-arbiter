@@ -287,3 +287,64 @@ async def test_title_generation_does_not_block_ask(indexed_database: Database, s
     await arbiter.wait_for_pending_titles()
     conversation = conversations.get(conversation_id)
     assert conversation.title == "Untitled"
+
+
+async def test_progress_callback_reports_ordered_stages(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    arbiter = _make_arbiter(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card [E1].", "citation_ids": ["E1"]}',
+    )
+
+    events: list[tuple[str, str]] = []
+    await arbiter.ask(
+        conversation_id,
+        "What happens during road events?",
+        on_progress=lambda stage, message: events.append((stage, message)),
+    )
+
+    stages = [stage for stage, _ in events]
+    assert stages == ["searching", "reviewing", "generating", "validating"]
+
+
+async def test_progress_messages_never_contain_raw_model_output(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    secret_marker = "SECRET-MODEL-TEXT-NOT-FOR-DISPLAY"
+    arbiter = _make_arbiter(
+        indexed_database,
+        settings,
+        f'{{"outcome": "ruling", "text": "{secret_marker} [E1].", "citation_ids": ["E1"]}}',
+    )
+
+    events: list[tuple[str, str]] = []
+    await arbiter.ask(
+        conversation_id,
+        "What happens during road events?",
+        on_progress=lambda stage, message: events.append((stage, message)),
+    )
+
+    for _, message in events:
+        assert secret_marker not in message
+
+
+async def test_progress_reviewing_message_falls_back_when_no_evidence(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    arbiter = _make_arbiter(
+        indexed_database,
+        settings,
+        '{"outcome": "abstention", "text": "No evidence resolves this.", "citation_ids": []}',
+    )
+
+    events: list[tuple[str, str]] = []
+    await arbiter.ask(
+        conversation_id,
+        "What is the best strategy for act 3?",
+        on_progress=lambda stage, message: events.append((stage, message)),
+    )
+
+    reviewing_message = next(message for stage, message in events if stage == "reviewing")
+    assert reviewing_message

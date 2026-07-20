@@ -8,7 +8,8 @@ them here directly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -29,6 +30,7 @@ class AppState:
     conversations: ConversationHistory
     profile: ProfileManager
     templates: Jinja2Templates
+    streaming_tasks: set[asyncio.Task] = field(default_factory=set)
 
 
 def create_app(arbiter: Arbiter, conversations: ConversationHistory, profile: ProfileManager) -> FastAPI:
