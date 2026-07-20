@@ -109,7 +109,7 @@ All source snapshots, models, embeddings, configuration, profiles, conversations
 ### Models
 
 - The initial chat model is `unsloth/Qwen3.6-27B-MTP-GGUF` in GGUF `Q8_0` quantization.
-- The initial embedding model is Qwen3-Embedding-0.6B in GGUF `Q8_0` quantization.
+- The initial embedding model is `gpustack/bge-m3-GGUF` in GGUF `Q8_0` quantization.
 - Model paths, context size, GPU offload, ports, generation parameters, and executable path are local configuration rather than constants.
 - The target laptop is an Apple M5 Max with 64 GB of unified memory and an existing Homebrew llama.cpp installation.
 - A neural reranker is not included initially. It will be considered only if evaluation shows a material improvement over hybrid retrieval.

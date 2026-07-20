@@ -9,9 +9,9 @@ port = 8088
 
 [models.embedding]
 base_url = "http://127.0.0.1:8081/v1"
-model_path = "/path/to/embedding.gguf"
+model_path = "gpustack/bge-m3-GGUF:Q8_0"
 timeout_seconds = 120
-batch_size = 32
+batch_size = 4
 
 [models.chat]
 base_url = "http://127.0.0.1:8080/v1"

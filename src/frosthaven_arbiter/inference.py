@@ -46,11 +46,13 @@ class LlamaCppEmbeddingModel:
         return hashlib.sha256(self._settings.model_path.encode()).hexdigest()[:16]
 
     async def embed(self, texts: Sequence[str]) -> np.ndarray:
-        response = await self._client.post("/embeddings", json={"input": list(texts)})
-        response.raise_for_status()
-        data = response.json()["data"]
-        vectors = np.array([item["embedding"] for item in data], dtype=np.float32)
-        return vectors
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), self._settings.batch_size):
+            batch = texts[start : start + self._settings.batch_size]
+            response = await self._client.post("/embeddings", json={"input": list(batch)})
+            response.raise_for_status()
+            vectors.extend(item["embedding"] for item in response.json()["data"])
+        return np.array(vectors, dtype=np.float32)
 
 
 class LlamaCppChatModel:

@@ -10,6 +10,7 @@ import pytest
 
 from frosthaven_arbiter.database import Database
 from frosthaven_arbiter.domain import SourceKey, Visibility
+from frosthaven_arbiter.sources.parse import approx_tokens, parse_source
 from frosthaven_arbiter.sources.sync import SourceSynchronizer
 
 from .conftest import FakeEmbeddingModel, FakeSourceFetcher
@@ -36,6 +37,26 @@ def fetcher() -> FakeSourceFetcher:
 @pytest.fixture
 def embedding_model() -> FakeEmbeddingModel:
     return FakeEmbeddingModel()
+
+
+def test_oversized_faq_list_is_split_at_item_boundaries() -> None:
+    list_items = "\n".join(f"{index}. " + "word " * 100 for index in range(1, 9))
+
+    chunks = parse_source(SourceKey.FAQ, f"# FAQ\n\n## Errata\n\n{list_items}")
+
+    assert len(chunks) > 1
+    assert all(chunk.atomic for chunk in chunks)
+    assert all(approx_tokens(chunk.body) <= 600 for chunk in chunks)
+
+
+def test_oversized_faq_paragraph_is_split() -> None:
+    paragraph = "word " * 1000
+
+    chunks = parse_source(SourceKey.FAQ, f"# FAQ\n\n## Ruling\n\n{paragraph}")
+
+    assert len(chunks) > 1
+    assert all(not chunk.atomic for chunk in chunks)
+    assert all(approx_tokens(chunk.body) <= 600 for chunk in chunks)
 
 
 async def test_first_sync_activates_both_sources(database: Database, fetcher, embedding_model, settings):

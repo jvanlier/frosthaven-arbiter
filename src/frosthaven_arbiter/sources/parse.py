@@ -61,7 +61,14 @@ def _text_of(tag: Tag) -> str:
 def _split_leaf_text(text: str) -> list[str]:
     if _approx_tokens(text) <= _MAX_CHUNK_TOKENS:
         return [text]
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    paragraphs: list[str] = []
+    max_words = int(_MAX_CHUNK_TOKENS / 1.3)
+    for paragraph in (p.strip() for p in text.split("\n\n") if p.strip()):
+        if _approx_tokens(paragraph) <= _MAX_CHUNK_TOKENS:
+            paragraphs.append(paragraph)
+            continue
+        words = paragraph.split()
+        paragraphs.extend(" ".join(words[start : start + max_words]) for start in range(0, len(words), max_words))
     parts: list[str] = []
     current: list[str] = []
     current_tokens = 0
@@ -80,6 +87,11 @@ def _split_leaf_text(text: str) -> list[str]:
     if current:
         parts.append("\n\n".join(current))
     return parts or [text]
+
+
+def _split_list(node: Tag) -> list[str]:
+    items = [_text_of(item) for item in node.find_all("li", recursive=False)]
+    return _split_leaf_text("\n\n".join(item for item in items if item))
 
 
 class _LeafBuffer:
@@ -216,7 +228,11 @@ def parse_rulebook(markdown_text: str) -> list[ParsedChunk]:
                 if text:
                     ensure_buffer().add_protected(text, frozenset({scope_key}))
                 continue
-            if node.name in {"table", "ul", "ol", "blockquote"}:
+            if node.name in {"ul", "ol"}:
+                for text in _split_list(node):
+                    ensure_buffer().add_atomic(text, Visibility.PUBLIC, frozenset())
+                continue
+            if node.name in {"table", "blockquote"}:
                 text = _text_of(node)
                 ensure_buffer().add_atomic(text, Visibility.PUBLIC, frozenset())
                 continue
@@ -245,14 +261,14 @@ def parse_faq(markdown_text: str) -> list[ParsedChunk]:
         hidden_spans = node.find_all("span", class_="hidden")
         if not hidden_spans:
             text = _text_of(node)
-            if text:
+            for part in _split_leaf_text(text) if text else []:
                 chunks.append(
                     ParsedChunk(
                         section_key=section_key,
                         heading_path=heading_path,
                         anchor=None,
                         page_or_section=current_section,
-                        body=text,
+                        body=part,
                         scope_keys=frozenset(),
                         visibility=Visibility.PUBLIC,
                     )
@@ -263,14 +279,14 @@ def parse_faq(markdown_text: str) -> list[ParsedChunk]:
         for span in public_copy.find_all("span", class_="hidden"):
             span.decompose()
         public_text = _text_of(public_copy)
-        if public_text:
+        for part in _split_leaf_text(public_text) if public_text else []:
             chunks.append(
                 ParsedChunk(
                     section_key=section_key,
                     heading_path=heading_path,
                     anchor=None,
                     page_or_section=current_section,
-                    body=public_text,
+                    body=part,
                     scope_keys=frozenset(),
                     visibility=Visibility.PUBLIC,
                 )
@@ -278,17 +294,18 @@ def parse_faq(markdown_text: str) -> list[ParsedChunk]:
 
         scope_keys = frozenset(make_scope_for_hidden(span, section_key) for span in hidden_spans)
         protected_text = _text_of(node)
-        chunks.append(
-            ParsedChunk(
-                section_key=section_key,
-                heading_path=heading_path,
-                anchor=None,
-                page_or_section=current_section,
-                body=protected_text,
-                scope_keys=scope_keys,
-                visibility=Visibility.PROTECTED,
+        for part in _split_leaf_text(protected_text):
+            chunks.append(
+                ParsedChunk(
+                    section_key=section_key,
+                    heading_path=heading_path,
+                    anchor=None,
+                    page_or_section=current_section,
+                    body=part,
+                    scope_keys=scope_keys,
+                    visibility=Visibility.PROTECTED,
+                )
             )
-        )
 
     def walk(nodes) -> None:
         nonlocal current_section
@@ -322,14 +339,14 @@ def parse_faq(markdown_text: str) -> list[ParsedChunk]:
                 section_key = "/".join(slugify(h) for h in heading_path) or "root"
                 text_parts = [_text_of(child) for child in node.find_all(recursive=False) if child.name != "summary"]
                 text = "\n\n".join(t for t in text_parts if t)
-                if text:
+                for part in _split_leaf_text(text) if text else []:
                     chunks.append(
                         ParsedChunk(
                             section_key=section_key,
                             heading_path=heading_path,
                             anchor=None,
                             page_or_section=current_section,
-                            body=f"{label}: {text}",
+                            body=f"{label}: {part}",
                             scope_keys=frozenset({scope_key}),
                             visibility=Visibility.PROTECTED,
                         )
@@ -338,8 +355,7 @@ def parse_faq(markdown_text: str) -> list[ParsedChunk]:
             if node.name in {"ul", "ol"}:
                 heading_path = tuple(heading_stack)
                 section_key = "/".join(slugify(h) for h in heading_path) or "root"
-                text = _text_of(node)
-                if text:
+                for text in _split_list(node):
                     chunks.append(
                         ParsedChunk(
                             section_key=section_key,
