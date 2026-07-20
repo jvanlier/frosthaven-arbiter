@@ -28,4 +28,12 @@
     <button hx-delete="/conversations/{{ conversation.id }}" hx-target="#messages" hx-swap="innerHTML">
         Clear conversation
     </button>
+    <button
+        class="button-danger"
+        hx-delete="/conversations/{{ conversation.id }}/full"
+        hx-target="#main"
+        hx-swap="innerHTML"
+        hx-confirm="Delete this conversation? This cannot be undone.">
+        Delete conversation
+    </button>
 </div>

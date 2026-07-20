@@ -180,6 +180,30 @@ def test_clear_conversation(indexed_database: Database, settings):
     assert conversation.messages == ()
 
 
+def test_delete_conversation(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.delete(f"/conversations/{conversation_id}/full")
+    assert response.status_code == 200
+
+    with pytest.raises(KeyError):
+        ConversationHistory(indexed_database).get(conversation_id)
+
+
+def test_delete_conversation_via_htmx_returns_conversation_list(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.delete(f"/conversations/{conversation_id}/full", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.headers["HX-Push-Url"] == "/"
+    assert f"/conversations/{conversation_id}" not in response.text
+    with pytest.raises(KeyError):
+        ConversationHistory(indexed_database).get(conversation_id)
+
+
 def test_model_text_is_escaped(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,

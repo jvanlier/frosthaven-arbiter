@@ -112,6 +112,10 @@ class ConversationHistory:
                 (conversation_id,),
             )
 
+    def delete(self, conversation_id: int) -> None:
+        with self._database.transaction() as conn:
+            conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
+
     def set_title(self, conversation_id: int, title: str) -> None:
         with self._database.transaction() as conn:
             conn.execute(

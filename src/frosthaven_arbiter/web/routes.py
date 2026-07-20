@@ -79,6 +79,20 @@ async def clear_conversation(request: Request, conversation_id: int):
     return {"cleared": True}
 
 
+@router.delete("/conversations/{conversation_id}/full")
+async def delete_conversation(request: Request, conversation_id: int):
+    state = _state(request)
+    state.conversations.delete(conversation_id)
+    if request.headers.get("HX-Request") == "true":
+        conversations = state.conversations.list()
+        response = state.templates.TemplateResponse(
+            request, "conversations_list.html", {"conversations": conversations}
+        )
+        response.headers["HX-Push-Url"] = "/"
+        return response
+    return {"deleted": True}
+
+
 @router.get("/profile", response_class=HTMLResponse)
 async def get_profile(request: Request) -> HTMLResponse:
     state = _state(request)

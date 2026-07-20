@@ -78,3 +78,25 @@ def test_get_missing_conversation_raises(database: Database):
     conversations = ConversationHistory(database)
     with pytest.raises(KeyError):
         conversations.get(999)
+
+
+def test_delete_conversation_removes_it_and_its_messages(database: Database):
+    conversations = ConversationHistory(database)
+    conversation_id = conversations.create(title="To be deleted")
+    with database.transaction() as conn:
+        conn.execute(
+            "INSERT INTO messages (conversation_id, sequence_no, role, status, content, created_at) "
+            "VALUES (?, 1, 'user', 'complete', 'hello', datetime('now'))",
+            (conversation_id,),
+        )
+
+    conversations.delete(conversation_id)
+
+    assert all(c.id != conversation_id for c in conversations.list())
+    with pytest.raises(KeyError):
+        conversations.get(conversation_id)
+    with database.connect() as conn:
+        message_count = conn.execute(
+            "SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?", (conversation_id,)
+        ).fetchone()["n"]
+        assert message_count == 0

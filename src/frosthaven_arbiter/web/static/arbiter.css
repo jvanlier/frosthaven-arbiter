@@ -102,6 +102,14 @@ button,
 button:hover,
 .button:hover { background: var(--pine-dark); }
 
+.button-danger {
+    margin-left: 0.5rem;
+    border-color: #7a2318;
+    background: #b3382a;
+}
+
+.button-danger:hover { background: #7a2318; }
+
 button:focus-visible,
 .button:focus-visible,
 a:focus-visible,
