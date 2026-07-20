@@ -49,6 +49,15 @@ def test_index_page_loads(indexed_database: Database, settings):
     assert "Frosthaven Arbiter" in response.text
 
 
+def test_stylesheet_is_served(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    response = client.get("/static/arbiter.css")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert "--parchment" in response.text
+
+
 def test_create_and_view_conversation(indexed_database: Database, settings):
     client = _make_client(indexed_database, settings, "{}")
     created = client.post("/conversations")
