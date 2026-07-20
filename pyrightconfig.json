@@ -1,16 +1,4 @@
 {
   "venvPath": ".",
-  "venv": ".venv",
-  "include": ["src", "tests"],
-  "pythonVersion": "3.12",
-  "typeCheckingMode": "standard",
-  "reportUnannotatedClassAttribute": false,
-  "reportUnusedCallResult": false,
-  "reportAny": false,
-  "reportImplicitStringConcatenation": false,
-  "reportUnknownVariableType": false,
-  "reportUnknownMemberType": false,
-  "reportUnknownArgumentType": false,
-  "reportMissingTypeStubs": false,
-  "reportMissingTypeArgument": false
+  "venv": ".venv"
 }
