@@ -45,7 +45,7 @@ def create_production_app():
     embedding_model = LlamaCppEmbeddingModel(settings.embedding_model)
     chat_model = LlamaCppChatModel(settings.chat_model)
     retrieval = AuthoritativeRetrieval(database, embedding_model, settings.retrieval)
-    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt)
+    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
     return create_app(arbiter, conversations, profile)

@@ -36,6 +36,7 @@ def settings(tmp_path: Path) -> Settings:
             database=tmp_path / "arbiter.sqlite3",
             snapshots=tmp_path / "snapshots",
             prompt=Path(__file__).resolve().parent.parent / "config" / "arbitration-prompt.txt",
+            title_prompt=Path(__file__).resolve().parent.parent / "config" / "title-prompt.txt",
         ),
         web=WebSettings(host="127.0.0.1", port=8088),
         embedding_model=ModelSettings(base_url="http://127.0.0.1:9001/v1", model_path="fake-embed", timeout_seconds=5),
@@ -109,6 +110,7 @@ class FakeChatModel:
     """Returns a pre-scripted response, recording every call's messages."""
 
     response: str = '{"outcome": "abstention", "text": "no evidence", "citation_ids": []}'
+    responses: list[str] | None = None
     calls: list[list[ChatMessage]] = field(default_factory=list)
     raise_error: bool = False
 
@@ -116,4 +118,6 @@ class FakeChatModel:
         self.calls.append(list(messages))
         if self.raise_error:
             raise RuntimeError("model unavailable")
+        if self.responses is not None:
+            return self.responses.pop(0)
         return self.response

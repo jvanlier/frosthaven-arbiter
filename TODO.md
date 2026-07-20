@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] Set the name of each conversation using the LLM.
+- [x] Set the name of each conversation using the LLM.
 - [ ] Allow conversations to be renamed manually in the UI.
 - [ ] Show the model's activity in the UI while it is generating a response:
   - [ ] Stream the model's thought pattern while it is thinking.

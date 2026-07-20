@@ -35,7 +35,7 @@ async def indexed_database(database: Database, settings) -> Database:
 def _make_client(database: Database, settings, chat_response: str) -> TestClient:
     retrieval = AuthoritativeRetrieval(database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = FakeChatModel(response=chat_response)
-    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt)
+    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
     app = create_app(arbiter, conversations, profile)

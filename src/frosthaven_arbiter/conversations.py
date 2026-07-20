@@ -112,6 +112,13 @@ class ConversationHistory:
                 (conversation_id,),
             )
 
+    def set_title(self, conversation_id: int, title: str) -> None:
+        with self._database.transaction() as conn:
+            conn.execute(
+                "UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?",
+                (title, conversation_id),
+            )
+
     def recent_complete_messages(self, conversation_id: int, limit: int) -> tuple[Message, ...]:
         conversation = self.get(conversation_id)
         complete = [m for m in conversation.messages if m.status == "complete"]
