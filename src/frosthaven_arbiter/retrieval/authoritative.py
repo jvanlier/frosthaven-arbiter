@@ -9,6 +9,7 @@ and token budgeting.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
 import numpy as np
@@ -17,6 +18,36 @@ from frosthaven_arbiter.config import RetrievalSettings
 from frosthaven_arbiter.database import Database
 from frosthaven_arbiter.domain import Citation, Evidence, SourceKey
 from frosthaven_arbiter.inference import EmbeddingModel
+
+_QUESTION_FILLER = frozenset(
+    {
+        "a",
+        "an",
+        "are",
+        "can",
+        "could",
+        "do",
+        "does",
+        "how",
+        "i",
+        "if",
+        "is",
+        "me",
+        "my",
+        "of",
+        "the",
+        "to",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "will",
+        "with",
+        "would",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -122,6 +153,12 @@ class AuthoritativeRetrieval:
                 fused_ranks.items(),
                 key=lambda item: (-item[1], -candidates_by_id[item[0]].precedence),
             )
+            # Preserve strong single-channel results that RRF overlap would otherwise crowd out.
+            channel_floor = min(3, self._settings.final_chunks // 2)
+            channel_ids = set(lexical_ids[:channel_floor]) | set(semantic_ids[:channel_floor])
+            ordered = [item for item in ordered if item[0] in channel_ids] + [
+                item for item in ordered if item[0] not in channel_ids
+            ]
 
             selected: list[tuple[int, float]] = []
             token_total = 0
@@ -172,7 +209,9 @@ class AuthoritativeRetrieval:
         unlocked_scope_keys: frozenset[str],
     ) -> list[int]:
         revision_ids = list(current_revisions.values())
-        fts_query = " OR ".join(f'"{token}"' for token in question.split() if token.strip())
+        tokens = re.findall(r"[\w]+", question.lower())
+        content_tokens = [token for token in tokens if token not in _QUESTION_FILLER]
+        fts_query = " OR ".join(f'"{token}"' for token in content_tokens or tokens)
         if not fts_query:
             return []
         eligibility_sql, eligibility_params = _eligibility_clause(unlocked_scope_keys)

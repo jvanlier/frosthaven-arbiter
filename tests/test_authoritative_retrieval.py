@@ -36,6 +36,22 @@ async def test_lexical_match_is_retrieved(indexed_database: Database, settings):
     assert any("Road events occur" in item.citation.excerpt for item in evidence)
 
 
+async def test_lexical_match_handles_inflected_question_terms(indexed_database: Database, settings):
+    lexical_only = settings.retrieval.__class__(
+        lexical_candidates=settings.retrieval.lexical_candidates,
+        semantic_candidates=0,
+        final_chunks=settings.retrieval.final_chunks,
+        rrf_k=settings.retrieval.rrf_k,
+        evidence_token_budget=settings.retrieval.evidence_token_budget,
+        adjacency_limit=settings.retrieval.adjacency_limit,
+    )
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), lexical_only)
+
+    evidence = await retrieval.retrieve("How do monsters move?", frozenset())
+
+    assert any(item.citation.heading_path[-1] == "Monster Movement" for item in evidence)
+
+
 async def test_locked_content_never_appears_in_evidence(indexed_database: Database, settings):
     retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
 

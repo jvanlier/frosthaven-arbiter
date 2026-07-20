@@ -25,6 +25,13 @@ async def index(request: Request) -> HTMLResponse:
 async def create_conversation(request: Request):
     state = _state(request)
     conversation_id = state.conversations.create()
+    if request.headers.get("HX-Request") == "true":
+        conversation = state.conversations.get(conversation_id)
+        response = state.templates.TemplateResponse(
+            request, "conversation.html", {"conversation": conversation}
+        )
+        response.headers["HX-Push-Url"] = f"/conversations/{conversation_id}"
+        return response
     return {"id": conversation_id}
 
 

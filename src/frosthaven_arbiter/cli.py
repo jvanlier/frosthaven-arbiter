@@ -39,7 +39,7 @@ def _sync_command() -> None:
     )
 
 
-def _serve_command() -> None:
+def create_production_app():
     settings = load_settings()
     database = Database(settings.paths.database)
     embedding_model = LlamaCppEmbeddingModel(settings.embedding_model)
@@ -48,8 +48,18 @@ def _serve_command() -> None:
     arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
-    app = create_app(arbiter, conversations, profile)
-    uvicorn.run(app, host=settings.web.host, port=settings.web.port)
+    return create_app(arbiter, conversations, profile)
+
+
+def _serve_command() -> None:
+    settings = load_settings()
+    uvicorn.run(
+        "frosthaven_arbiter.cli:create_production_app",
+        host=settings.web.host,
+        port=settings.web.port,
+        reload=True,
+        factory=True,
+    )
 
 
 def main() -> None:

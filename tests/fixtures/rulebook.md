@@ -14,6 +14,10 @@ Road events occur when the party travels between locations. Draw one road event 
 
 Boat events occur when traveling by sea.
 
+## Monster Movement
+
+Once a monster has found a focus and identified its path, it performs its abilities in order. A monster moves only when its ability card lists movement, which grants movement points equal to its base movement stat plus the listed modifier.
+
 | Roll | Result |
 | --- | --- |
 | 1-3 | Calm seas |

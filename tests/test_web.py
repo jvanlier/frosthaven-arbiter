@@ -68,6 +68,17 @@ def test_create_and_view_conversation(indexed_database: Database, settings):
     assert response.status_code == 200
 
 
+def test_create_conversation_renders_new_conversation_for_htmx(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.post("/conversations", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.headers["HX-Push-Url"] == "/conversations/1"
+    assert "Conversation 1" in response.text
+    assert "Ask a rules question" in response.text
+
+
 def test_ask_question_returns_ruling_html(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
