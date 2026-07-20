@@ -37,7 +37,7 @@ def settings(tmp_path: Path) -> Settings:
             snapshots=tmp_path / "snapshots",
             prompt=Path(__file__).resolve().parent.parent / "config" / "arbitration-prompt.txt",
         ),
-        web=WebSettings(host="127.0.0.1", port=8080),
+        web=WebSettings(host="127.0.0.1", port=8088),
         embedding_model=ModelSettings(base_url="http://127.0.0.1:9001/v1", model_path="fake-embed", timeout_seconds=5),
         chat_model=ModelSettings(base_url="http://127.0.0.1:9002/v1", model_path="fake-chat", timeout_seconds=5),
         retrieval=RetrievalSettings(
