@@ -52,8 +52,11 @@ async def test_supported_evidence_survives_qwen_chat_template(indexed_database: 
     conversation_id = conversations.create()
     retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
     arbiter = Arbiter(
-        indexed_database, retrieval, _QwenChatTemplateModel(),
-        settings.paths.prompt, settings.paths.title_prompt,
+        indexed_database,
+        retrieval,
+        _QwenChatTemplateModel(),
+        settings.paths.prompt,
+        settings.paths.title_prompt,
     )
 
     result = await arbiter.ask(conversation_id, "What happens during road events?")
@@ -249,8 +252,7 @@ async def test_title_stripped_and_truncated(indexed_database: Database, settings
     chat_model = FakeChatModel(
         responses=[
             '{"outcome": "abstention", "text": "No evidence.", "citation_ids": []}',
-            '"Very long title that should be truncated because it exceeds the '
-            'sixty character limit set in the code"',
+            '"Very long title that should be truncated because it exceeds the sixty character limit set in the code"',
         ]
     )
     arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)

@@ -271,6 +271,7 @@ def test_title_endpoint_polling_when_null(indexed_database: Database, settings):
 
 def test_title_endpoint_stops_polling_when_set(indexed_database: Database, settings):
     from frosthaven_arbiter.conversations import ConversationHistory
+
     conversations = ConversationHistory(indexed_database)
     conversation_id = conversations.create(title="My Campaign")
 

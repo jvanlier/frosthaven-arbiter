@@ -33,9 +33,7 @@ async def create_conversation(request: Request):
     conversation_id = state.conversations.create()
     if request.headers.get("HX-Request") == "true":
         conversation = state.conversations.get(conversation_id)
-        response = state.templates.TemplateResponse(
-            request, "conversation.html", {"conversation": conversation}
-        )
+        response = state.templates.TemplateResponse(request, "conversation.html", {"conversation": conversation})
         response.headers["HX-Push-Url"] = f"/conversations/{conversation_id}"
         return response
     return {"id": conversation_id}
@@ -52,9 +50,7 @@ async def get_conversation(request: Request, conversation_id: int) -> HTMLRespon
 async def get_conversation_title(request: Request, conversation_id: int) -> HTMLResponse:
     state = _state(request)
     title = state.conversations.get_title(conversation_id)
-    return state.templates.TemplateResponse(
-        request, "title.html", {"conversation_id": conversation_id, "title": title}
-    )
+    return state.templates.TemplateResponse(request, "title.html", {"conversation_id": conversation_id, "title": title})
 
 
 @router.post("/conversations/{conversation_id}/questions", response_class=HTMLResponse)
