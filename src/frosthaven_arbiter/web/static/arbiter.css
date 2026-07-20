@@ -184,6 +184,12 @@ textarea {
 
 .error { color: #9e3024; font-weight: 700; }
 
+.title-loading {
+    color: var(--muted-ink);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
 @media (max-width: 34rem) {
     header { align-items: flex-start; padding-top: 1.25rem; }
     h1 { font-size: 2rem; }
