@@ -35,7 +35,7 @@ async def indexed_database(database: Database, settings) -> Database:
 def _make_arbiter(database: Database, settings, chat_response: str) -> Arbiter:
     retrieval = AuthoritativeRetrieval(database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = FakeChatModel(response=chat_response)
-    return Arbiter(database, retrieval, chat_model, settings.paths.prompt)
+    return Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
 
 class _QwenChatTemplateModel(FakeChatModel):
@@ -51,7 +51,10 @@ async def test_supported_evidence_survives_qwen_chat_template(indexed_database: 
     conversations = ConversationHistory(indexed_database)
     conversation_id = conversations.create()
     retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
-    arbiter = Arbiter(indexed_database, retrieval, _QwenChatTemplateModel(), settings.paths.prompt)
+    arbiter = Arbiter(
+        indexed_database, retrieval, _QwenChatTemplateModel(),
+        settings.paths.prompt, settings.paths.title_prompt,
+    )
 
     result = await arbiter.ask(conversation_id, "What happens during road events?")
 
@@ -125,7 +128,7 @@ async def test_model_unavailable_fails_closed(indexed_database: Database, settin
     conversation_id = conversations.create()
     retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = FakeChatModel(raise_error=True)
-    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt)
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
     result = await arbiter.ask(conversation_id, "What happens during road events?")
 
@@ -172,9 +175,86 @@ async def test_locked_content_never_reaches_prompt(indexed_database: Database, s
     chat_model = FakeChatModel(
         response='{"outcome": "abstention", "text": "No evidence resolves this.", "citation_ids": []}'
     )
-    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt)
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
     await arbiter.ask(conversation_id, "Tell me about the locked sticker 4 reward")
 
     all_prompt_text = "\n".join(message.content for call in chat_model.calls for message in call)
     assert "must never leak" not in all_prompt_text
+
+
+async def test_title_generated_on_first_question(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(
+        responses=[
+            '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+            "Road Event Rules",
+        ]
+    )
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+
+    await arbiter.ask(conversation_id, "What happens during road events?")
+
+    conversation = conversations.get(conversation_id)
+    assert conversation.title == "Road Event Rules"
+
+
+async def test_title_not_regenerated_on_subsequent_questions(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(
+        responses=[
+            '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+            "Road Event Rules",
+            '{"outcome": "abstention", "text": "No evidence.", "citation_ids": []}',
+        ]
+    )
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+
+    await arbiter.ask(conversation_id, "What happens during road events?")
+    await arbiter.ask(conversation_id, "How do I set up the board?")
+
+    conversation = conversations.get(conversation_id)
+    assert conversation.title == "Road Event Rules"
+
+
+async def test_title_generation_failure_does_not_break_ask(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(
+        responses=[
+            '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+        ]
+    )
+    chat_model.raise_error = False
+    # The arbitration call succeeds; the title call will get IndexError from empty responses list
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+
+    result = await arbiter.ask(conversation_id, "What happens during road events?")
+
+    assert isinstance(result.outcome, Ruling)
+
+
+async def test_title_stripped_and_truncated(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(
+        responses=[
+            '{"outcome": "abstention", "text": "No evidence.", "citation_ids": []}',
+            '"Very long title that should be truncated because it exceeds the '
+            'sixty character limit set in the code"',
+        ]
+    )
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+
+    await arbiter.ask(conversation_id, "What happens during road events?")
+
+    conversation = conversations.get(conversation_id)
+    assert conversation.title is not None
+    assert conversation.title.startswith("Very long title")
+    assert len(conversation.title) <= 60

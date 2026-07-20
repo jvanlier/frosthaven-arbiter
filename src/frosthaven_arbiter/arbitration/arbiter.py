@@ -77,12 +77,14 @@ class Arbiter:
         retrieval: AuthoritativeRetrieval,
         chat_model: ChatModel,
         prompt_path: Path,
+        title_prompt_path: Path,
         history_limit: int = 6,
     ) -> None:
         self._database = database
         self._retrieval = retrieval
         self._chat_model = chat_model
         self._prompt_path = prompt_path
+        self._title_prompt_path = title_prompt_path
         self._history_limit = history_limit
         self._profile = ProfileManager(database)
         self._conversations = ConversationHistory(database)
@@ -136,24 +138,37 @@ class Arbiter:
             if unknown:
                 raise ArbitrationError(f"model cited unknown citation ids: {sorted(unknown)}")
             cited_evidence = tuple(evidence_by_citation_id[cid] for cid in citation_ids)
+            cited_citations = tuple(item.citation for item in cited_evidence)
+            if outcome_kind == "ruling":
+                outcome = Ruling(text=text, citations=cited_citations)
+                self._finalize(message_id, OutcomeKind.RULING, text, cited_evidence)
+            else:
+                outcome = Abstention(explanation=text, relevant_evidence=cited_citations)
+                self._finalize(message_id, OutcomeKind.ABSTENTION, text, cited_evidence)
         except ArbitrationError:
             outcome = Abstention(explanation="The available evidence does not resolve this question.")
             self._finalize(message_id, OutcomeKind.ABSTENTION, outcome.explanation, ())
-            return AskResult(message_id=message_id, outcome=outcome)
         except Exception:
             outcome = Abstention(explanation="The Arbiter could not reach the local model. No ruling was produced.")
             self._finalize(message_id, OutcomeKind.ABSTENTION, outcome.explanation, ())
-            return AskResult(message_id=message_id, outcome=outcome)
 
-        cited_citations = tuple(item.citation for item in cited_evidence)
-        if outcome_kind == "ruling":
-            outcome = Ruling(text=text, citations=cited_citations)
-            self._finalize(message_id, OutcomeKind.RULING, text, cited_evidence)
-        else:
-            outcome = Abstention(explanation=text, relevant_evidence=cited_citations)
-            self._finalize(message_id, OutcomeKind.ABSTENTION, text, cited_evidence)
+        if user_seq == 1:
+            await self._maybe_set_title(conversation_id, question)
 
         return AskResult(message_id=message_id, outcome=outcome)
+
+    async def _maybe_set_title(self, conversation_id: int, question: str) -> None:
+        try:
+            title_prompt = _load_prompt(self._title_prompt_path)
+            raw = await self._chat_model.complete([
+                ChatMessage(role="system", content=title_prompt),
+                ChatMessage(role="user", content=question),
+            ])
+            title = raw.strip().strip('"').strip("'")[:60]
+            if title:
+                self._conversations.set_title(conversation_id, title)
+        except Exception:
+            pass
 
     def _next_sequence(self, conn, conversation_id: int) -> int:
         row = conn.execute(

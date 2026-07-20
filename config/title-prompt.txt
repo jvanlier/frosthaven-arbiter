@@ -1,0 +1,2 @@
+Summarize the user's question into a short conversation title of 3-6 words.
+Respond with only the title text. No quotes, no punctuation at the end, no explanation.
