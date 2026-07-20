@@ -121,9 +121,7 @@ class ConversationHistory:
 
     def get_title(self, conversation_id: int) -> str | None:
         with self._database.connect() as conn:
-            row = conn.execute(
-                "SELECT title FROM conversations WHERE id = ?", (conversation_id,)
-            ).fetchone()
+            row = conn.execute("SELECT title FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
             if row is None:
                 raise KeyError(f"no conversation {conversation_id}")
             return row["title"]
