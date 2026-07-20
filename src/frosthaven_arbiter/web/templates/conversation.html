@@ -1,6 +1,6 @@
 <div id="conversation">
     <a class="button" href="/" hx-get="/" hx-target="#main" hx-push-url="true" style="margin-top: 0; margin-bottom: 1rem;">← Back</a>
-    <h2>{{ conversation.title or ("Conversation " ~ conversation.id) }}</h2>
+    <h2 id="conversation-title">{{ conversation.title or ("Conversation " ~ conversation.id) }}</h2>
     <div id="messages">
         {% for message in conversation.messages %}
         <div class="message message-{{ message.role }} outcome-{{ message.outcome_kind or 'none' }}">

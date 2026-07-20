@@ -48,6 +48,15 @@ async def get_conversation(request: Request, conversation_id: int) -> HTMLRespon
     return _render_page(request, state, "conversation.html", {"conversation": conversation})
 
 
+@router.get("/conversations/{conversation_id}/title", response_class=HTMLResponse)
+async def get_conversation_title(request: Request, conversation_id: int) -> HTMLResponse:
+    state = _state(request)
+    title = state.conversations.get_title(conversation_id)
+    return state.templates.TemplateResponse(
+        request, "title.html", {"conversation_id": conversation_id, "title": title}
+    )
+
+
 @router.post("/conversations/{conversation_id}/questions", response_class=HTMLResponse)
 async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
     state = _state(request)
@@ -56,7 +65,15 @@ async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
     if not question:
         return HTMLResponse("<p class='error'>A question is required.</p>", status_code=400)
     result = await state.arbiter.ask(conversation_id, question)
-    return state.templates.TemplateResponse(request, "message.html", {"outcome": result.outcome})
+    return state.templates.TemplateResponse(
+        request,
+        "message.html",
+        {
+            "outcome": result.outcome,
+            "conversation_id": conversation_id,
+            "titling_started": result.titling_started,
+        },
+    )
 
 
 @router.delete("/conversations/{conversation_id}")

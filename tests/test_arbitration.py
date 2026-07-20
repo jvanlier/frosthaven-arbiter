@@ -196,6 +196,7 @@ async def test_title_generated_on_first_question(indexed_database: Database, set
     arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
     await arbiter.ask(conversation_id, "What happens during road events?")
+    await arbiter.wait_for_pending_titles()
 
     conversation = conversations.get(conversation_id)
     assert conversation.title == "Road Event Rules"
@@ -215,7 +216,9 @@ async def test_title_not_regenerated_on_subsequent_questions(indexed_database: D
     arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
     await arbiter.ask(conversation_id, "What happens during road events?")
+    await arbiter.wait_for_pending_titles()
     await arbiter.ask(conversation_id, "How do I set up the board?")
+    await arbiter.wait_for_pending_titles()
 
     conversation = conversations.get(conversation_id)
     assert conversation.title == "Road Event Rules"
@@ -253,8 +256,32 @@ async def test_title_stripped_and_truncated(indexed_database: Database, settings
     arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
 
     await arbiter.ask(conversation_id, "What happens during road events?")
+    await arbiter.wait_for_pending_titles()
 
     conversation = conversations.get(conversation_id)
     assert conversation.title is not None
     assert conversation.title.startswith("Very long title")
     assert len(conversation.title) <= 60
+
+
+async def test_title_generation_does_not_block_ask(indexed_database: Database, settings):
+    """Prove that ask() returns before title generation completes."""
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(
+        responses=[
+            '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+            "Untitled",
+        ]
+    )
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+
+    result = await arbiter.ask(conversation_id, "What happens during road events?")
+
+    assert isinstance(result.outcome, Ruling)
+    conversation = conversations.get(conversation_id)
+    assert conversation.title is None
+    await arbiter.wait_for_pending_titles()
+    conversation = conversations.get(conversation_id)
+    assert conversation.title == "Untitled"

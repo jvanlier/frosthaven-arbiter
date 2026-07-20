@@ -77,6 +77,40 @@ def test_create_conversation_renders_new_conversation_for_htmx(indexed_database:
     assert response.headers["HX-Push-Url"] == "/conversations/1"
     assert "Conversation 1" in response.text
     assert "Ask a rules question" in response.text
+    assert "titling…" not in response.text
+
+
+def test_ask_first_question_triggers_title_polling_via_oob_swap(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"}
+    )
+
+    assert response.status_code == 200
+    assert 'hx-swap-oob="true"' in response.text
+    assert "titling…" in response.text
+
+
+def test_ask_second_question_does_not_retrigger_title_polling(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "First question?"})
+
+    response = client.post(f"/conversations/{conversation_id}/questions", data={"question": "Second question?"})
+
+    assert response.status_code == 200
+    assert "hx-swap-oob" not in response.text
+    assert "titling…" not in response.text
 
 
 def test_ask_question_returns_ruling_html(indexed_database: Database, settings):
@@ -221,3 +255,28 @@ def test_profile_page_has_back_button(indexed_database: Database, settings):
     assert 'class="button"' in response.text
     assert 'hx-get="/" ' in response.text
     assert "← Back" in response.text
+
+
+def test_title_endpoint_polling_when_null(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}/title")
+
+    assert response.status_code == 200
+    assert "hx-get" in response.text
+    assert "hx-trigger" in response.text
+    assert "titling…" in response.text
+
+
+def test_title_endpoint_stops_polling_when_set(indexed_database: Database, settings):
+    from frosthaven_arbiter.conversations import ConversationHistory
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create(title="My Campaign")
+
+    client = _make_client(indexed_database, settings, "{}")
+    response = client.get(f"/conversations/{conversation_id}/title")
+
+    assert response.status_code == 200
+    assert "hx-get" not in response.text
+    assert "My Campaign" in response.text

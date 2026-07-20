@@ -8,6 +8,7 @@ caller before citation validation succeeds.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,7 @@ class ArbitrationError(Exception):
 class AskResult:
     message_id: int
     outcome: Outcome
+    titling_started: bool = False
 
 
 def _load_prompt(path: Path) -> str:
@@ -88,6 +90,7 @@ class Arbiter:
         self._history_limit = history_limit
         self._profile = ProfileManager(database)
         self._conversations = ConversationHistory(database)
+        self._background_tasks: set[asyncio.Task[None]] = set()
 
     async def ask(self, conversation_id: int, question: str) -> AskResult:
         profile = self._profile.get()
@@ -152,10 +155,13 @@ class Arbiter:
             outcome = Abstention(explanation="The Arbiter could not reach the local model. No ruling was produced.")
             self._finalize(message_id, OutcomeKind.ABSTENTION, outcome.explanation, ())
 
-        if user_seq == 1:
-            await self._maybe_set_title(conversation_id, question)
+        titling_started = user_seq == 1
+        if titling_started:
+            task = asyncio.create_task(self._maybe_set_title(conversation_id, question))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
-        return AskResult(message_id=message_id, outcome=outcome)
+        return AskResult(message_id=message_id, outcome=outcome, titling_started=titling_started)
 
     async def _maybe_set_title(self, conversation_id: int, question: str) -> None:
         try:
@@ -169,6 +175,9 @@ class Arbiter:
                 self._conversations.set_title(conversation_id, title)
         except Exception:
             pass
+
+    async def wait_for_pending_titles(self) -> None:
+        await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
     def _next_sequence(self, conn, conversation_id: int) -> int:
         row = conn.execute(
