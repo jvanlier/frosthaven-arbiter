@@ -4,6 +4,7 @@ citation rendering, and clear-chat behavior.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -350,3 +351,123 @@ def test_title_endpoint_stops_polling_when_set(indexed_database: Database, setti
     assert response.status_code == 200
     assert "hx-get" not in response.text
     assert "My Campaign" in response.text
+
+
+def test_conversation_form_has_streaming_attributes_and_overlay(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert f'data-stream-url="/conversations/{conversation_id}/questions/stream"' in response.text
+    assert 'class="loading-overlay"' in response.text
+    assert 'role="status"' in response.text
+
+
+def test_layout_loads_arbiter_js(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/")
+
+    assert "/static/arbiter.js" in response.text
+
+
+def test_arbiter_js_is_served(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/static/arbiter.js")
+
+    assert response.status_code == 200
+
+
+def _read_ndjson_events(response) -> list[dict]:
+    events = []
+    for line in response.text.strip().split("\n"):
+        line = line.strip()
+        if line:
+            events.append(json.loads(line))
+    return events
+
+
+def test_streaming_endpoint_emits_status_events_before_result(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions/stream",
+        data={"question": "What happens during road events?"},
+    )
+
+    assert response.status_code == 200
+    events = _read_ndjson_events(response)
+    assert events[-1]["type"] == "result"
+    status_events = [event for event in events if event["type"] == "status"]
+    assert len(status_events) >= 1
+    assert all(event["message"] for event in status_events)
+
+
+def test_streaming_endpoint_result_html_is_escaped_and_validated(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "abstention", "text": "<script>alert(1)</script>", "citation_ids": []}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions/stream",
+        data={"question": "hostile?"},
+    )
+
+    events = _read_ndjson_events(response)
+    result = next(event for event in events if event["type"] == "result")
+    assert "<script>" not in result["html"]
+    assert "&lt;script&gt;" in result["html"]
+
+
+def test_streaming_endpoint_rejects_empty_question(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions/stream",
+        data={"question": "   "},
+    )
+
+    assert response.status_code == 400
+    events = _read_ndjson_events(response)
+    assert events[0]["type"] == "error"
+
+
+def test_streaming_endpoint_reports_error_on_model_failure(indexed_database: Database, settings):
+    from frosthaven_arbiter.arbitration.arbiter import Arbiter
+    from frosthaven_arbiter.conversations import ConversationHistory
+    from frosthaven_arbiter.profile import ProfileManager
+    from frosthaven_arbiter.retrieval.authoritative import AuthoritativeRetrieval
+    from frosthaven_arbiter.web.app import create_app
+
+    from .conftest import FakeChatModel, FakeEmbeddingModel
+
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    chat_model = FakeChatModel(raise_error=True)
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+    conversations = ConversationHistory(indexed_database)
+    profile = ProfileManager(indexed_database)
+    app = create_app(arbiter, conversations, profile)
+    client = TestClient(app)
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions/stream",
+        data={"question": "What happens during road events?"},
+    )
+
+    assert response.status_code == 200
+    events = _read_ndjson_events(response)
+    assert events[-1]["type"] == "result"
+    result = events[-1]
+    assert "badge-abstention" in result["html"]

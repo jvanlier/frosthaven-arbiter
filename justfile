@@ -42,3 +42,7 @@ lint-python:
 
 lint-web:
     uv run djlint src/frosthaven_arbiter/web/templates
+
+# Opt-in browser-driven end-to-end tests (requires `uv run playwright install chromium` once).
+test-e2e:
+    uv run pytest -m e2e -q --no-cov

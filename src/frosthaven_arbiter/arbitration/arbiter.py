@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,11 @@ from frosthaven_arbiter.domain import Abstention, Evidence, Outcome, OutcomeKind
 from frosthaven_arbiter.inference import ChatMessage, ChatModel
 from frosthaven_arbiter.profile import ProfileManager
 from frosthaven_arbiter.retrieval.authoritative import AuthoritativeRetrieval
+
+# Progress callback: invoked with (stage, message) for each arbitration
+# stage. Messages are built only from safe, already-retrieved data (never
+# from raw model output) so they can be shown to the user immediately.
+ProgressCallback = Callable[[str, str], None]
 
 
 class ArbitrationError(Exception):
@@ -30,6 +36,28 @@ class AskResult:
     message_id: int
     outcome: Outcome
     titling_started: bool = False
+
+
+def _describe_evidence_topics(evidence: Sequence[Evidence]) -> str:
+    """Build a short, safe topic phrase from retrieved evidence headings.
+
+    Only uses heading paths of evidence that has already been retrieved
+    (i.e. already passed spoiler/scope filtering), never raw model output.
+    """
+    headings: list[str] = []
+    seen: set[str] = set()
+    for item in evidence:
+        if not item.citation.heading_path:
+            continue
+        heading = item.citation.heading_path[-1]
+        if heading not in seen:
+            seen.add(heading)
+            headings.append(heading)
+        if len(headings) >= 2:
+            break
+    if not headings:
+        return f"Reviewing {len(evidence)} relevant passages" if evidence else "Reviewing the rulebook and FAQ"
+    return f"Reviewing {len(evidence)} relevant passages about {' and '.join(headings)}"
 
 
 def _load_prompt(path: Path) -> str:
@@ -92,10 +120,21 @@ class Arbiter:
         self._conversations = ConversationHistory(database)
         self._background_tasks: set[asyncio.Task[None]] = set()
 
-    async def ask(self, conversation_id: int, question: str) -> AskResult:
+    async def ask(
+        self,
+        conversation_id: int,
+        question: str,
+        on_progress: ProgressCallback | None = None,
+    ) -> AskResult:
+        def report(stage: str, message: str) -> None:
+            if on_progress is not None:
+                on_progress(stage, message)
+
+        report("searching", "Searching the rulebook and FAQ")
         profile = self._profile.get()
         history = self._conversations.recent_complete_messages(conversation_id, self._history_limit)
         evidence = await self._retrieval.retrieve(question, profile.unlocked_scope_keys)
+        report("reviewing", _describe_evidence_topics(evidence))
 
         system_prompt = _load_prompt(self._prompt_path)
         system_sections = [
@@ -132,8 +171,10 @@ class Arbiter:
 
         evidence_by_citation_id = {item.citation.citation_id: item for item in evidence}
 
+        report("generating", "Preparing a ruling from the evidence")
         try:
             raw_output = await self._chat_model.complete(messages)
+            report("validating", "Checking the ruling and its citations")
             outcome_kind, text, citation_ids = _parse_model_output(raw_output)
             unknown = set(citation_ids) - set(evidence_by_citation_id)
             if unknown:

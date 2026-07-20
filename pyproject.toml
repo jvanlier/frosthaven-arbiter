@@ -30,9 +30,11 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "playwright>=1.56.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.0.0",
+    "pytest-playwright>=0.7.1",
     "pyright>=1.1.400",
     "ruff>=0.15.22",
     "djlint>=1.42.0",
@@ -46,7 +48,10 @@ select = ["E", "F", "I", "N", "ARG", "A"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--cov --cov-report=term-missing"
+markers = [
+    "e2e: browser-driven tests requiring Playwright; opt-in, excluded by default (run with `-m e2e`)",
+]
+addopts = "-m 'not e2e' --cov --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src"]
