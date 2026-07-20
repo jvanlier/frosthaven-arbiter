@@ -158,3 +158,66 @@ def test_model_text_is_escaped(indexed_database: Database, settings):
 
     assert "<script>" not in response.text
     assert "&lt;script&gt;" in response.text
+
+
+def test_reload_conversation_page_is_styled(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert response.status_code == 200
+    assert "Frosthaven Arbiter" in response.text
+    assert 'href="/static/arbiter.css"' in response.text
+
+
+def test_reload_profile_page_is_styled(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "Frosthaven Arbiter" in response.text
+    assert 'href="/static/arbiter.css"' in response.text
+
+
+def test_htmx_conversation_returns_partial(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert "<html>" not in response.text
+    assert "Conversation 1" in response.text
+
+
+def test_htmx_profile_returns_partial(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/profile", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert "<html>" not in response.text
+    assert "Campaign Context" in response.text
+
+
+def test_conversation_page_has_back_button(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert 'class="button"' in response.text
+    assert 'hx-get="/" ' in response.text
+    assert "← Back" in response.text
+
+
+def test_profile_page_has_back_button(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/profile")
+
+    assert 'class="button"' in response.text
+    assert 'hx-get="/" ' in response.text
+    assert "← Back" in response.text
