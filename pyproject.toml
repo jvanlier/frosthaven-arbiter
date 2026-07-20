@@ -32,6 +32,7 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.0.0",
     "pyright>=1.1.400",
     "ruff>=0.15.22",
 ]
@@ -44,3 +45,10 @@ select = ["E", "F", "I", "N", "ARG", "A"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "--cov --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 80
