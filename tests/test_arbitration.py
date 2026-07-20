@@ -38,6 +38,26 @@ def _make_arbiter(database: Database, settings, chat_response: str) -> Arbiter:
     return Arbiter(database, retrieval, chat_model, settings.paths.prompt)
 
 
+class _QwenChatTemplateModel(FakeChatModel):
+    async def complete(self, messages):
+        self.calls.append(list(messages))
+        visible_system_content = "\n".join(message.content for message in messages[:2] if message.role == "system")
+        if "Road events occur" in visible_system_content:
+            return '{"outcome": "ruling", "text": "Draw a road event card [E1].", "citation_ids": ["E1"]}'
+        return '{"outcome": "abstention", "text": "No evidence resolves this.", "citation_ids": []}'
+
+
+async def test_supported_evidence_survives_qwen_chat_template(indexed_database: Database, settings):
+    conversations = ConversationHistory(indexed_database)
+    conversation_id = conversations.create()
+    retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
+    arbiter = Arbiter(indexed_database, retrieval, _QwenChatTemplateModel(), settings.paths.prompt)
+
+    result = await arbiter.ask(conversation_id, "What happens during road events?")
+
+    assert isinstance(result.outcome, Ruling)
+
+
 async def test_supported_question_produces_cited_ruling(indexed_database: Database, settings):
     conversations = ConversationHistory(indexed_database)
     conversation_id = conversations.create()
