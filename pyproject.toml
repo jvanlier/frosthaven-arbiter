@@ -35,6 +35,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "pyright>=1.1.400",
     "ruff>=0.15.22",
+    "djlint>=1.42.0",
 ]
 
 [tool.ruff]
@@ -52,3 +53,17 @@ source = ["src"]
 
 [tool.coverage.report]
 fail_under = 80
+
+[tool.djlint]
+profile = "jinja"
+indent = 4
+max_line_length = 200
+max_attribute_length = 200
+ignore = "H021,H023,H030,H031,J004,J018"
+ignore_blocks = [
+    "for",
+    "if",
+    "else",
+    "endif",
+    "endfor",
+]

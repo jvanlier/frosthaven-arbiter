@@ -6,7 +6,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
+        exclude: static/htmx\.min\.js$
       - id: trailing-whitespace
+        exclude: static/htmx\.min\.js$
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
@@ -29,4 +31,11 @@ repos:
         entry: uv run pyright
         language: system
         types: [python]
+        require_serial: true
+      - id: uv-run-djlint
+        name: djlint
+        entry: uv run djlint
+        language: system
+        types: [html]
+        files: ^src/frosthaven_arbiter/web/templates/
         require_serial: true
