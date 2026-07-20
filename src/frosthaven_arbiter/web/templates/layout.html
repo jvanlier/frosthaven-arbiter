@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Frosthaven Arbiter</title>
+    <link rel="stylesheet" href="/static/arbiter.css" />
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Frosthaven Arbiter</h1>
+        <nav>
+            <a href="/profile" hx-get="/profile" hx-target="#main" hx-push-url="true">Profile</a>
+        </nav>
+    </header>
+    <main id="main">
+        {% include content_template %}
+    </main>
+</body>
+</html>

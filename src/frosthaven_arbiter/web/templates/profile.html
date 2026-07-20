@@ -1,4 +1,5 @@
 <div id="profile">
+    <a class="button" href="/" hx-get="/" hx-target="#main" hx-push-url="true" style="margin-top: 0; margin-bottom: 1rem;">← Back</a>
     <h2>Campaign Context</h2>
     {% if saved %}<p class="saved-notice">Saved.</p>{% endif %}
     <form hx-put="/profile" hx-target="#profile">

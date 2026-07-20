@@ -14,11 +14,17 @@ def _state(request: Request) -> AppState:
     return request.app.state.arbiter_state
 
 
+def _render_page(request: Request, state: AppState, template_name: str, context: dict):
+    if request.headers.get("HX-Request") == "true":
+        return state.templates.TemplateResponse(request, template_name, context)
+    return state.templates.TemplateResponse(request, "layout.html", {**context, "content_template": template_name})
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     state = _state(request)
     conversations = state.conversations.list()
-    return state.templates.TemplateResponse(request, "base.html", {"conversations": conversations})
+    return _render_page(request, state, "conversations_list.html", {"conversations": conversations})
 
 
 @router.post("/conversations")
@@ -39,7 +45,7 @@ async def create_conversation(request: Request):
 async def get_conversation(request: Request, conversation_id: int) -> HTMLResponse:
     state = _state(request)
     conversation = state.conversations.get(conversation_id)
-    return state.templates.TemplateResponse(request, "conversation.html", {"conversation": conversation})
+    return _render_page(request, state, "conversation.html", {"conversation": conversation})
 
 
 @router.post("/conversations/{conversation_id}/questions", response_class=HTMLResponse)
@@ -65,7 +71,7 @@ async def get_profile(request: Request) -> HTMLResponse:
     state = _state(request)
     profile = state.profile.get()
     scopes = state.profile.known_scopes()
-    return state.templates.TemplateResponse(request, "profile.html", {"profile": profile, "scopes": scopes})
+    return _render_page(request, state, "profile.html", {"profile": profile, "scopes": scopes})
 
 
 @router.put("/profile", response_class=HTMLResponse)

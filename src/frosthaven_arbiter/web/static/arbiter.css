@@ -85,7 +85,10 @@ a { color: var(--pine-dark); }
 
 a:hover { color: var(--amber); }
 
-button {
+button,
+.button {
+    display: inline-block;
+    text-decoration: none;
     margin-top: 0.75rem;
     padding: 0.6rem 0.95rem;
     border: 1px solid var(--pine-dark);
@@ -96,9 +99,11 @@ button {
     cursor: pointer;
 }
 
-button:hover { background: var(--pine-dark); }
+button:hover,
+.button:hover { background: var(--pine-dark); }
 
 button:focus-visible,
+.button:focus-visible,
 a:focus-visible,
 textarea:focus-visible,
 input:focus-visible {
