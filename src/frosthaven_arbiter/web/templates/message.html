@@ -4,7 +4,7 @@
     <p>{{ outcome.text }}</p>
     <ul class="citations">
         {% for citation in outcome.citations %}
-        <li>[{{ citation.citation_id }}] {{ citation.authority_label }} — {{ citation.heading_path | join(" > ") }}</li>
+        <li><a href="/citations/{{ message_id }}/{{ citation.citation_id }}">[{{ citation.citation_id }}] {{ citation.authority_label }} — {{ citation.heading_path | join(" > ") }}</a></li>
         {% endfor %}
     </ul>
 </div>

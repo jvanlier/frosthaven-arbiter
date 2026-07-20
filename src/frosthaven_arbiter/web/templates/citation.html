@@ -1,0 +1,15 @@
+<div id="conversation">
+    <a class="button" href="/" hx-get="/" hx-target="#main" hx-push-url="true" style="margin-top: 0; margin-bottom: 1rem;">← Back</a>
+    <h2>[{{ citation.citation_id }}] {{ citation.authority_label }}</h2>
+    <p><strong>{{ citation.source_title }}</strong> &mdash; {{ citation.heading_path | join(" > ") }}</p>
+    {% if citation.page_or_section %}
+    <p>{{ citation.page_or_section }}</p>
+    {% endif %}
+    <blockquote>{{ citation.excerpt }}</blockquote>
+    <p class="citation-meta">
+        Revision {{ citation.revision }}
+        {% if citation.canonical_url %}
+        &middot; <a href="{{ citation.canonical_url }}" target="_blank" rel="noopener">Source</a>
+        {% endif %}
+    </p>
+</div>

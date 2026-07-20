@@ -293,6 +293,51 @@ def test_title_endpoint_polling_when_null(indexed_database: Database, settings):
     assert "titling…" in response.text
 
 
+def test_citation_detail_page_renders(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"})
+    conversation = ConversationHistory(indexed_database).get(conversation_id)
+    message = next(m for m in conversation.messages if m.citations)
+    citation = message.citations[0]
+
+    response = client.get(f"/citations/{message.id}/{citation.citation_id}")
+
+    assert response.status_code == 200
+    assert citation.excerpt in response.text
+    assert citation.source_title in response.text
+
+
+def test_citation_detail_page_returns_404_for_unknown_citation(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/citations/{conversation_id}/E999")
+
+    assert response.status_code == 404
+
+
+def test_message_citation_link_targets_citation_page(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"}
+    )
+
+    conversation = ConversationHistory(indexed_database).get(conversation_id)
+    message = next(m for m in conversation.messages if m.citations)
+    assert f'href="/citations/{message.id}/E1"' in response.text
+
+
 def test_title_endpoint_stops_polling_when_set(indexed_database: Database, settings):
     from frosthaven_arbiter.conversations import ConversationHistory
 

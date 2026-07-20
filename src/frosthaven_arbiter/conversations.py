@@ -104,6 +104,16 @@ class ConversationHistory:
                 )
         return Conversation(id=conv_row["id"], title=conv_row["title"], messages=tuple(messages))
 
+    def get_citation(self, message_id: int, citation_id: str) -> Citation:
+        with self._database.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM message_citations WHERE message_id = ? AND citation_id = ?",
+                (message_id, citation_id),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"no citation {citation_id} for message {message_id}")
+            return _row_to_citation(row)
+
     def clear(self, conversation_id: int) -> None:
         with self._database.transaction() as conn:
             conn.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))

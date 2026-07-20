@@ -67,6 +67,7 @@ async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
         {
             "outcome": result.outcome,
             "conversation_id": conversation_id,
+            "message_id": result.message_id,
             "titling_started": result.titling_started,
         },
     )
@@ -91,6 +92,16 @@ async def delete_conversation(request: Request, conversation_id: int):
         response.headers["HX-Push-Url"] = "/"
         return response
     return {"deleted": True}
+
+
+@router.get("/citations/{message_id}/{citation_id}", response_class=HTMLResponse)
+async def get_citation(request: Request, message_id: int, citation_id: str) -> HTMLResponse:
+    state = _state(request)
+    try:
+        citation = state.conversations.get_citation(message_id, citation_id)
+    except KeyError:
+        return HTMLResponse("<p class='error'>Citation not found.</p>", status_code=404)
+    return _render_page(request, state, "citation.html", {"citation": citation})
 
 
 @router.get("/profile", response_class=HTMLResponse)
