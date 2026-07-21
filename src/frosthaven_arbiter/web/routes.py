@@ -64,13 +64,13 @@ async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
     if not question:
         return HTMLResponse("<p class='error'>A question is required.</p>", status_code=400)
     result = await state.arbiter.ask(conversation_id, question)
+    conversation = state.conversations.get(conversation_id)
     return state.templates.TemplateResponse(
         request,
-        "message.html",
+        "turn.html",
         {
-            "outcome": result.outcome,
+            "messages": conversation.messages[-2:],
             "conversation_id": conversation_id,
-            "message_id": result.message_id,
             "titling_started": result.titling_started,
         },
     )
@@ -102,11 +102,11 @@ async def ask_question_stream(request: Request, conversation_id: int) -> Streami
     async def run_arbitration():
         try:
             result = await state.arbiter.ask(conversation_id, question, on_progress=on_progress)
-            html = state.templates.env.get_template("message.html").render(
+            conversation = state.conversations.get(conversation_id)
+            html = state.templates.env.get_template("turn.html").render(
                 {
-                    "outcome": result.outcome,
+                    "messages": conversation.messages[-2:],
                     "conversation_id": conversation_id,
-                    "message_id": result.message_id,
                     "titling_started": False,
                 }
             )

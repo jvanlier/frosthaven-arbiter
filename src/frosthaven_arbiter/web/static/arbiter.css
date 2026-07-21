@@ -160,6 +160,10 @@ textarea {
 
 .outcome-abstention { border-left-color: var(--amber); background: var(--abstention-wash); }
 
+.outcome-none { border-left-color: var(--muted-ink); }
+
+.message-user { border-left-color: var(--line); background: var(--parchment); }
+
 .badge {
     display: inline-block;
     padding: 0.2rem 0.5rem;
@@ -182,6 +186,14 @@ textarea {
 }
 
 .locked-notice { color: #805016; font-style: italic; }
+
+.message-time {
+    display: block;
+    margin-top: 0.6rem;
+    color: var(--muted-ink);
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+}
 
 .saved-notice {
     padding: 0.6rem 0.75rem;

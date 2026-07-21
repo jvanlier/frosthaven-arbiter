@@ -29,6 +29,7 @@ class Message:
     status: str
     outcome_kind: OutcomeKind | None
     content: str
+    created_at: str
     citations: tuple[Citation, ...]
 
 
@@ -82,7 +83,7 @@ class ConversationHistory:
             if conv_row is None:
                 raise KeyError(f"no conversation {conversation_id}")
             message_rows = conn.execute(
-                "SELECT id, role, status, outcome_kind, content FROM messages "
+                "SELECT id, role, status, outcome_kind, content, created_at FROM messages "
                 "WHERE conversation_id = ? ORDER BY sequence_no",
                 (conversation_id,),
             ).fetchall()
@@ -99,6 +100,7 @@ class ConversationHistory:
                         status=message_row["status"],
                         outcome_kind=OutcomeKind(message_row["outcome_kind"]) if message_row["outcome_kind"] else None,
                         content=message_row["content"],
+                        created_at=message_row["created_at"],
                         citations=tuple(_row_to_citation(row) for row in citation_rows),
                     )
                 )
