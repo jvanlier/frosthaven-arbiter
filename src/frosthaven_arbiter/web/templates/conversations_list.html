@@ -1,13 +1,23 @@
 <section id="conversations">
     <h2>Conversations</h2>
-    <ul>
+    <ul class="conversation-list">
         {% for conversation in conversations %}
         <li>
-            <a href="/conversations/{{ conversation.id }}"
+            <a class="conversation-row"
+               href="/conversations/{{ conversation.id }}"
                hx-get="/conversations/{{ conversation.id }}"
                hx-target="#main"
                hx-push-url="true">
-                {{ conversation.title or ("Conversation " ~ conversation.id) }}
+                <span class="conversation-title">{{ conversation.title or ("Conversation " ~ conversation.id) }}</span>
+                <span class="conversation-meta">
+                    {% if conversation.latest_outcome_kind %}
+                    <span class="badge badge-{{ conversation.latest_outcome_kind }}">{{ conversation.latest_outcome_kind | capitalize }}</span>
+                    {% endif %}
+                    <span class="conversation-updated">
+                        Updated
+                        <time class="message-time" datetime="{{ conversation.updated_at | replace(' ', 'T') }}Z">{{ conversation.updated_at }}</time>
+                    </span>
+                </span>
             </a>
         </li>
         {% endfor %}
