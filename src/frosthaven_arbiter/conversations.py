@@ -20,6 +20,7 @@ class ConversationSummary:
     title: str | None
     created_at: str
     updated_at: str
+    latest_outcome_kind: OutcomeKind | None
 
 
 @dataclass(frozen=True)
@@ -73,9 +74,34 @@ class ConversationHistory:
     def list(self) -> tuple[ConversationSummary, ...]:
         with self._database.connect() as conn:
             rows = conn.execute(
-                "SELECT id, title, created_at, updated_at FROM conversations ORDER BY updated_at DESC"
+                "WITH message_activity AS ("
+                "  SELECT conversation_id, MAX(COALESCE(completed_at, created_at)) AS updated_at "
+                "  FROM messages GROUP BY conversation_id"
+                "), latest_outcomes AS ("
+                "  SELECT conversation_id, outcome_kind, "
+                "    ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY sequence_no DESC) AS recency "
+                "  FROM messages WHERE status = 'complete' AND outcome_kind IS NOT NULL"
+                ") "
+                "SELECT conversations.id, conversations.title, conversations.created_at, "
+                "  MAX(conversations.updated_at, COALESCE(message_activity.updated_at, conversations.updated_at)) "
+                "    AS updated_at, "
+                "  latest_outcomes.outcome_kind "
+                "FROM conversations "
+                "LEFT JOIN message_activity ON message_activity.conversation_id = conversations.id "
+                "LEFT JOIN latest_outcomes ON latest_outcomes.conversation_id = conversations.id "
+                "  AND latest_outcomes.recency = 1 "
+                "ORDER BY updated_at DESC"
             ).fetchall()
-        return tuple(ConversationSummary(row["id"], row["title"], row["created_at"], row["updated_at"]) for row in rows)
+        return tuple(
+            ConversationSummary(
+                id=row["id"],
+                title=row["title"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+                latest_outcome_kind=OutcomeKind(row["outcome_kind"]) if row["outcome_kind"] else None,
+            )
+            for row in rows
+        )
 
     def get(self, conversation_id: int) -> Conversation:
         with self._database.connect() as conn:

@@ -79,7 +79,56 @@ main { padding: 2.5rem 0 4rem; }
 
 ul { padding-left: 1.25rem; }
 
-#conversations li { margin: 0.6rem 0; }
+.conversation-list {
+    padding-left: 0;
+    list-style: none;
+}
+
+.conversation-list li { margin: 0; }
+
+.conversation-list li + li {
+    border-top: 1px solid var(--line);
+}
+
+.conversation-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    padding: 0.75rem 0.25rem;
+    text-decoration: none;
+}
+
+.conversation-row:hover { background: var(--parchment); }
+
+.conversation-row:hover .conversation-title { color: var(--amber); }
+
+.conversation-title {
+    flex: 1 1 auto;
+    min-width: 12rem;
+    font-size: 1.05rem;
+}
+
+.conversation-meta {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: system-ui, sans-serif;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.conversation-updated {
+    color: var(--muted-ink);
+}
+
+.conversation-updated .message-time {
+    display: inline;
+    margin-top: 0;
+}
 
 a { color: var(--pine-dark); }
 

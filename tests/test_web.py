@@ -50,6 +50,66 @@ def test_index_page_loads(indexed_database: Database, settings):
     assert "Frosthaven Arbiter" in response.text
 
 
+def test_index_page_shows_no_outcome_badge_for_new_conversation(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    client.post("/conversations")
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "badge-ruling" not in response.text
+    assert "badge-abstention" not in response.text
+
+
+def test_index_page_shows_ruling_badge_after_a_ruling(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"})
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "badge-ruling" in response.text
+
+
+def test_index_page_shows_the_latest_outcome_when_conversation_has_both(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "abstention", "text": "No evidence resolves this.", "citation_ids": []}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "Best strategy for act 3?"})
+
+    with indexed_database.transaction() as conn:
+        conn.execute(
+            "UPDATE messages SET outcome_kind = 'ruling', content = 'Draw a road event card.' "
+            "WHERE conversation_id = ? AND role = 'arbiter'",
+            (conversation_id,),
+        )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "badge-ruling" in response.text
+    assert "badge-abstention" not in response.text
+
+
+def test_index_page_shows_conversation_updated_timestamp(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    client.post("/conversations")
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="conversation-updated"' in response.text
+    assert response.text.count('class="message-time"') == 1
+
+
 def test_stylesheet_is_served(indexed_database: Database, settings):
     client = _make_client(indexed_database, settings, "{}")
     response = client.get("/static/arbiter.css")

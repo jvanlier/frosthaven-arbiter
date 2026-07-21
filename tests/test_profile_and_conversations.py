@@ -8,7 +8,7 @@ import pytest
 
 from frosthaven_arbiter.conversations import ConversationHistory
 from frosthaven_arbiter.database import Database
-from frosthaven_arbiter.domain import SourceKey
+from frosthaven_arbiter.domain import OutcomeKind, SourceKey
 from frosthaven_arbiter.profile import ProfileManager, UnknownScopeError
 from frosthaven_arbiter.sources.sync import SourceSynchronizer
 
@@ -100,3 +100,54 @@ def test_delete_conversation_removes_it_and_its_messages(database: Database):
             "SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?", (conversation_id,)
         ).fetchone()["n"]
         assert message_count == 0
+
+
+def _insert_completed_message(
+    database: Database,
+    conversation_id: int,
+    sequence_no: int,
+    outcome_kind: str,
+    completed_at: str,
+) -> None:
+    with database.transaction() as conn:
+        conn.execute(
+            "INSERT INTO messages "
+            "(conversation_id, sequence_no, role, status, outcome_kind, content, created_at, completed_at) "
+            "VALUES (?, ?, 'arbiter', 'complete', ?, 'answer', ?, ?)",
+            (conversation_id, sequence_no, outcome_kind, completed_at, completed_at),
+        )
+
+
+def test_list_reports_the_most_recent_outcome_kind(database: Database):
+    conversations = ConversationHistory(database)
+    conversation_id = conversations.create(title="Two outcomes")
+    _insert_completed_message(database, conversation_id, 1, "abstention", "2026-01-01 00:00:00")
+    _insert_completed_message(database, conversation_id, 2, "ruling", "2026-01-02 00:00:00")
+
+    summary = next(c for c in conversations.list() if c.id == conversation_id)
+
+    assert summary.latest_outcome_kind == OutcomeKind.RULING
+
+
+def test_list_reports_no_outcome_for_conversation_without_completed_outcomes(database: Database):
+    conversations = ConversationHistory(database)
+    conversation_id = conversations.create(title="No outcome yet")
+
+    summary = next(c for c in conversations.list() if c.id == conversation_id)
+
+    assert summary.latest_outcome_kind is None
+
+
+def test_list_orders_by_latest_message_activity_not_only_stored_updated_at(database: Database):
+    conversations = ConversationHistory(database)
+    older_conversation_id = conversations.create(title="Older, but touched recently")
+    newer_conversation_id = conversations.create(title="Newer, but untouched")
+
+    # Simulate a follow-up question completing well after the conversation
+    # row's own `updated_at` was last written, without going through
+    # `set_title`/`clear` (which are the only seams that currently bump it).
+    _insert_completed_message(database, older_conversation_id, 1, "ruling", "2030-01-01 00:00:00")
+
+    listed_ids = [c.id for c in conversations.list()]
+
+    assert listed_ids.index(older_conversation_id) < listed_ids.index(newer_conversation_id)
