@@ -131,6 +131,36 @@ def test_ask_question_returns_ruling_html(indexed_database: Database, settings):
     assert "Draw a road event card" in response.text
 
 
+def test_ask_question_echoes_the_users_question(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"}
+    )
+
+    assert "What happens during road events?" in response.text
+
+
+def test_ask_question_response_includes_timestamps(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"}
+    )
+
+    assert response.text.count('class="message-time"') == 2
+
+
 def test_ask_question_returns_abstention_html(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
@@ -228,6 +258,45 @@ def test_reload_conversation_page_is_styled(indexed_database: Database, settings
     assert response.status_code == 200
     assert "Frosthaven Arbiter" in response.text
     assert 'href="/static/arbiter.css"' in response.text
+
+
+def test_reload_conversation_shows_badge_and_question(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"})
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert "badge-ruling" in response.text
+    assert "What happens during road events?" in response.text
+    assert response.text.count('class="message-time"') == 2
+
+
+def test_empty_conversation_shows_ask_a_rules_question_label(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert "Ask a rules question" in response.text
+
+
+def test_conversation_with_messages_drops_the_label(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+    client.post(f"/conversations/{conversation_id}/questions", data={"question": "What happens during road events?"})
+
+    response = client.get(f"/conversations/{conversation_id}")
+
+    assert "Ask a rules question" not in response.text
 
 
 def test_reload_profile_page_is_styled(indexed_database: Database, settings):
@@ -408,6 +477,26 @@ def test_streaming_endpoint_emits_status_events_before_result(indexed_database: 
     status_events = [event for event in events if event["type"] == "status"]
     assert len(status_events) >= 1
     assert all(event["message"] for event in status_events)
+
+
+def test_streaming_endpoint_result_html_echoes_question_and_timestamps(indexed_database: Database, settings):
+    client = _make_client(
+        indexed_database,
+        settings,
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+    )
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions/stream",
+        data={"question": "What happens during road events?"},
+    )
+
+    events = _read_ndjson_events(response)
+    result = next(event for event in events if event["type"] == "result")
+    assert "What happens during road events?" in result["html"]
+    assert "badge-ruling" in result["html"]
+    assert result["html"].count('class="message-time"') == 2
 
 
 def test_streaming_endpoint_result_html_is_escaped_and_validated(indexed_database: Database, settings):

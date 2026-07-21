@@ -1,0 +1,18 @@
+<div class="message message-{{ message.role }} outcome-{{ message.outcome_kind or 'none' }}">
+    {% if message.outcome_kind %}
+    <span class="badge badge-{{ message.outcome_kind }}">{{ message.outcome_kind | capitalize }}</span>
+    {% endif %}
+    <p>{{ message.content }}</p>
+    {% if message.citations %}
+    <ul class="citations">
+        {% for citation in message.citations %}
+        <li>
+            <a href="/citations/{{ message.id }}/{{ citation.citation_id }}">
+                [{{ citation.citation_id }}] {{ citation.authority_label }} - {{ citation.heading_path | join(" > ") }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <time class="message-time" datetime="{{ message.created_at | replace(' ', 'T') }}Z">{{ message.created_at }}</time>
+</div>

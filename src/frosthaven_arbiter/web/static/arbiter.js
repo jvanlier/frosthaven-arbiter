@@ -45,6 +45,17 @@
         if (existing) existing.remove();
     }
 
+    function formatTimestamps(root) {
+        var times = root.querySelectorAll("time.message-time[datetime]");
+        for (var i = 0; i < times.length; i++) {
+            var el = times[i];
+            var date = new Date(el.getAttribute("datetime"));
+            if (!isNaN(date.getTime())) {
+                el.textContent = date.toLocaleString();
+            }
+        }
+    }
+
     async function handleStreamSubmit(form) {
         if (form.dataset.streaming === "true") {
             return;
@@ -114,8 +125,14 @@
                             if (window.htmx) {
                                 window.htmx.process(messages);
                             }
+                            formatTimestamps(messages);
                         }
-                        if (textarea) textarea.value = "";
+                        if (textarea) {
+                            textarea.value = "";
+                            textarea.placeholder = "Continue the conversation…";
+                        }
+                        var label = form.querySelector("label[for=question]");
+                        if (label) label.remove();
                         if (event.titling_started && conversationId && window.htmx) {
                             window.htmx.ajax("GET", "/conversations/" + conversationId + "/title", {
                                 target: "#conversation-title",
@@ -144,5 +161,13 @@
         }
         event.preventDefault();
         handleStreamSubmit(form);
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        formatTimestamps(document);
+    });
+
+    document.body.addEventListener("htmx:afterSwap", function (event) {
+        formatTimestamps(event.target);
     });
 })();

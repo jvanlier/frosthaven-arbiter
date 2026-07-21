@@ -3,21 +3,7 @@
     <h2 id="conversation-title">{{ conversation.title or ("Conversation " ~ conversation.id) }}</h2>
     <div id="messages">
         {% for message in conversation.messages %}
-        <div class="message message-{{ message.role }} outcome-{{ message.outcome_kind or 'none' }}">
-            <p>{{ message.content }}</p>
-            {% if message.citations %}
-            <ul class="citations">
-                {% for citation in message.citations %}
-                <li>
-                    <a href="/citations/{{ message.id }}/{{ citation.citation_id }}">
-                        [{{ citation.citation_id }}] {{ citation.authority_label }}
-                        {{ citation.heading_path | join(" > ") }}
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </div>
+        {% include "_message.html" %}
         {% endfor %}
     </div>
     <form
@@ -26,8 +12,12 @@
         action="/conversations/{{ conversation.id }}/questions"
         data-stream-url="/conversations/{{ conversation.id }}/questions/stream"
         data-conversation-id="{{ conversation.id }}">
+        {% if not conversation.messages %}
         <label for="question">Ask a rules question</label>
         <textarea id="question" name="question" required></textarea>
+        {% else %}
+        <textarea id="question" name="question" placeholder="Continue the conversation…" required></textarea>
+        {% endif %}
         <button type="submit">Ask the Arbiter</button>
     </form>
     <div class="loading-overlay" hidden>
