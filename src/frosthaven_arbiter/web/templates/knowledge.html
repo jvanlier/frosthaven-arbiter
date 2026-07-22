@@ -1,0 +1,134 @@
+<div id="knowledge">
+    <h2>Knowledge</h2>
+
+    <nav class="knowledge-sources">
+        {% for source in sources %}
+        <a
+            class="knowledge-source-link{% if source.source_key == selected_source %} active{% endif %}"
+            href="/knowledge?source={{ source.source_key.value }}"
+            hx-get="/knowledge?source={{ source.source_key.value }}"
+            hx-target="#main"
+            hx-push-url="true"
+        >
+            {{ source.display_name }}
+        </a>
+        {% endfor %}
+    </nav>
+
+    {% set current = sources | selectattr("source_key", "equalto", selected_source) | first %}
+    {% if current %}
+    <p class="knowledge-source-meta">
+        <strong>{{ current.authority_label }}</strong>
+        {% if current.commit_sha %}
+        &middot; revision {{ current.commit_sha }}
+        {% if current.retrieved_at %}
+        &middot; retrieved {{ current.retrieved_at }}
+        {% endif %}
+        {% else %}
+        &middot; not yet synchronized
+        {% endif %}
+        &middot; <a href="{{ current.canonical_url }}" target="_blank" rel="noopener">Source</a>
+    </p>
+    <p class="knowledge-source-counts">
+        {{ current.total_chunks }} chunk{{ "s" if current.total_chunks != 1 else "" }}
+        &middot; {{ current.protected_chunks }} protected
+        &middot; {{ current.locked_chunks }} currently locked
+        {% if current.locked_chunks %}
+        &middot; <a href="/profile" hx-get="/profile" hx-target="#main" hx-push-url="true">Unlock scopes</a>
+        {% endif %}
+    </p>
+    {% endif %}
+
+    {% if not sections %}
+    <p class="empty-state">This source has not been synchronized yet.</p>
+    {% else %}
+    <div class="knowledge-layout">
+        <nav class="knowledge-sections">
+            <ul>
+                {% for section in sections %}
+                <li>
+                    <a
+                        class="knowledge-section-link{% if section.section_key == selected_section %} active{% endif %}"
+                        href="/knowledge?source={{ selected_source.value }}&section={{ section.section_key }}"
+                        hx-get="/knowledge?source={{ selected_source.value }}&section={{ section.section_key }}"
+                        hx-target="#main"
+                        hx-push-url="true"
+                    >
+                        {{ section.heading_path | join(" > ") if section.heading_path else section.section_key }}
+                        <span class="knowledge-section-counts">
+                            {{ section.total_chunks }}{% if section.locked_chunks %} &middot; {{ section.locked_chunks }} locked{% endif %}
+                        </span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </nav>
+
+        <div class="knowledge-chunks">
+            {% for chunk in chunks %}
+            <article class="knowledge-chunk{% if chunk.visibility.value == 'protected' %}{% if chunk.readable %} knowledge-chunk-unlocked{% else %} knowledge-chunk-locked{% endif %}{% endif %}" id="chunk-{{ chunk.chunk_id }}">
+                <header class="knowledge-chunk-header">
+                    <span class="knowledge-chunk-position">#{{ chunk.chunk_id }} &middot; position {{ chunk.position }}</span>
+                    <span class="knowledge-chunk-heading">{{ chunk.heading_path | join(" > ") }}</span>
+                    {% if chunk.page_or_section %}
+                    <span class="knowledge-chunk-page">{{ chunk.page_or_section }}</span>
+                    {% endif %}
+                </header>
+
+                <p class="knowledge-chunk-meta">
+                    <span class="badge {{ 'badge-abstention' if chunk.visibility.value == 'protected' else 'badge-ruling' }}">
+                        {{ chunk.visibility.value }}
+                    </span>
+                    {{ chunk.token_count }} tokens
+                    {% if chunk.scope_labels %}
+                    &middot; scopes: {{ chunk.scope_labels | join(", ") }}
+                    {% endif %}
+                </p>
+
+                {% if chunk.readable %}
+                <div class="knowledge-chunk-body">{{ chunk.body }}</div>
+                {% else %}
+                <p class="knowledge-chunk-redacted locked-notice">
+                    Locked. Unlock {{ chunk.scope_labels | join(", ") }} in
+                    <a href="/profile" hx-get="/profile" hx-target="#main" hx-push-url="true">Profile</a>
+                    to view this content.
+                </p>
+                {% endif %}
+
+                <details class="knowledge-chunk-diagnostics">
+                    <summary>Diagnostics</summary>
+                    <dl>
+                        <dt>Chunk ID</dt>
+                        <dd>{{ chunk.chunk_id }}</dd>
+                        <dt>Section key</dt>
+                        <dd>{{ chunk.section_key }}</dd>
+                        {% if chunk.anchor %}
+                        <dt>Anchor</dt>
+                        <dd>{{ chunk.anchor }}</dd>
+                        {% endif %}
+                        <dt>Content SHA-256</dt>
+                        <dd class="knowledge-hash">{{ chunk.content_sha256 }}</dd>
+                        {% if chunk.revision_commit_sha %}
+                        <dt>Revision</dt>
+                        <dd class="knowledge-hash">{{ chunk.revision_commit_sha }}</dd>
+                        {% endif %}
+                        {% if chunk.embedding_model_fingerprint %}
+                        <dt>Embedding model</dt>
+                        <dd class="knowledge-hash">{{ chunk.embedding_model_fingerprint }}</dd>
+                        <dt>Embedding input SHA-256</dt>
+                        <dd class="knowledge-hash">{{ chunk.embedding_input_sha256 }}</dd>
+                        <dt>Embedding dimensions</dt>
+                        <dd>{{ chunk.embedding_dimensions }}</dd>
+                        {% endif %}
+                        {% if chunk.readable and chunk.embedding_input %}
+                        <dt>Embedding input</dt>
+                        <dd><pre class="knowledge-embedding-input">{{ chunk.embedding_input }}</pre></dd>
+                        {% endif %}
+                    </dl>
+                </details>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>

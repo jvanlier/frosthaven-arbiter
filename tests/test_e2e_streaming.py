@@ -34,6 +34,7 @@ from frosthaven_arbiter.conversations import ConversationHistory
 from frosthaven_arbiter.database import Database
 from frosthaven_arbiter.domain import SourceKey
 from frosthaven_arbiter.inference import ChatMessage
+from frosthaven_arbiter.knowledge import KnowledgeBrowser
 from frosthaven_arbiter.profile import ProfileManager
 from frosthaven_arbiter.retrieval.authoritative import AuthoritativeRetrieval
 from frosthaven_arbiter.sources.sync import SourceSynchronizer
@@ -127,7 +128,8 @@ def live_arbiter_server(tmp_path: Path, settings) -> Iterator[tuple[str, FakeCha
     arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
-    app = create_app(arbiter, conversations, profile)
+    knowledge = KnowledgeBrowser(database)
+    app = create_app(arbiter, conversations, profile, knowledge)
 
     server = _LiveServer(app, _free_port())
     server.start()
