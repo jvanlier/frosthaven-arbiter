@@ -9,6 +9,7 @@
     --amber: #b36d1d;
     --ruling-wash: #e6f0e8;
     --abstention-wash: #f9edda;
+    --header-h: 6.5rem;
     font-family: Georgia, "Times New Roman", serif;
     color: var(--ink);
     background: var(--parchment);
@@ -57,6 +58,11 @@ h2 {
 
 h3 { margin: 1.75rem 0 0.6rem; }
 
+header nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
 nav a {
     color: var(--pine-dark);
     font-family: system-ui, sans-serif;
@@ -66,6 +72,10 @@ nav a {
 }
 
 main { padding: 2.5rem 0 4rem; }
+
+main:has(#knowledge) {
+    width: min(100% - 2rem, 75rem);
+}
 
 #conversations,
 #conversation,
@@ -351,9 +361,17 @@ button:disabled {
 
 .knowledge-layout {
     display: grid;
-    grid-template-columns: 16rem 1fr;
+    grid-template-columns: 18rem 1fr;
     gap: 1.5rem;
     margin-top: 1.5rem;
+    align-items: start;
+}
+
+.knowledge-sections {
+    position: sticky;
+    top: var(--header-h, 6.5rem);
+    max-height: calc(100vh - var(--header-h, 6.5rem) - 2rem);
+    overflow-y: auto;
 }
 
 .knowledge-sections ul {
@@ -366,17 +384,17 @@ button:disabled {
 }
 
 .knowledge-section-link {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
+    display: block;
     padding: 0.6rem 0.25rem;
     font-family: system-ui, sans-serif;
     font-size: 0.9rem;
 }
 
 .knowledge-section-counts {
+    margin-left: 0.4rem;
     color: var(--muted-ink);
     font-size: 0.78rem;
+    white-space: nowrap;
 }
 
 .knowledge-chunk {
@@ -475,5 +493,11 @@ button:disabled {
 @media (max-width: 40rem) {
     .knowledge-layout {
         grid-template-columns: 1fr;
+    }
+
+    .knowledge-sections {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
     }
 }
