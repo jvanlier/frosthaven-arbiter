@@ -652,13 +652,13 @@ def test_knowledge_page_selects_faq_source(indexed_database: Database, settings)
     response = client.get("/knowledge?source=faq")
 
     assert response.status_code == 200
-    assert "Can I teleport into the hex I currently occupy" in response.text
+    assert "Envelope 24 should list sticker 10" in response.text
 
 
 def test_knowledge_page_shows_a_specific_section(indexed_database: Database, settings):
     client = _make_client(indexed_database, settings, "{}")
 
-    response = client.get("/knowledge?source=rulebook&section=frosthaven-rulebook-transcription-fixture/road-events")
+    response = client.get("/knowledge?source=rulebook&section=getting-started/road-events")
 
     assert response.status_code == 200
     assert "Road events occur when the party travels" in response.text
