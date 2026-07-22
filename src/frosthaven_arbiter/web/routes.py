@@ -8,6 +8,7 @@ import json
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
+from frosthaven_arbiter.domain import SourceKey
 from frosthaven_arbiter.web.app import AppState
 
 router = APIRouter()
@@ -174,6 +175,40 @@ async def get_citation(request: Request, message_id: int, citation_id: str) -> H
     except KeyError:
         return HTMLResponse("<p class='error'>Citation not found.</p>", status_code=404)
     return _render_page(request, state, "citation.html", {"citation": citation})
+
+
+@router.get("/knowledge", response_class=HTMLResponse)
+async def get_knowledge(request: Request, source: str | None = None, section: str | None = None) -> HTMLResponse:
+    state = _state(request)
+    unlocked = state.profile.get().unlocked_scope_keys
+
+    sources = state.knowledge.list_sources(unlocked)
+    try:
+        selected_source = SourceKey(source) if source else SourceKey.RULEBOOK
+    except ValueError:
+        selected_source = SourceKey.RULEBOOK
+
+    sections = state.knowledge.list_sections(selected_source, unlocked)
+    selected_section = (
+        section
+        if section and any(s.section_key == section for s in sections)
+        else (sections[0].section_key if sections else None)
+    )
+
+    chunks = state.knowledge.list_chunks(selected_source, selected_section, unlocked) if selected_section else ()
+
+    return _render_page(
+        request,
+        state,
+        "knowledge.html",
+        {
+            "sources": sources,
+            "selected_source": selected_source,
+            "sections": sections,
+            "selected_section": selected_section,
+            "chunks": chunks,
+        },
+    )
 
 
 @router.get("/profile", response_class=HTMLResponse)

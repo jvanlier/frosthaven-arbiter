@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 
 from frosthaven_arbiter.arbitration.arbiter import Arbiter
 from frosthaven_arbiter.conversations import ConversationHistory
+from frosthaven_arbiter.knowledge import KnowledgeBrowser
 from frosthaven_arbiter.profile import ProfileManager
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -29,11 +30,17 @@ class AppState:
     arbiter: Arbiter
     conversations: ConversationHistory
     profile: ProfileManager
+    knowledge: KnowledgeBrowser
     templates: Jinja2Templates
     streaming_tasks: set[asyncio.Task] = field(default_factory=set)
 
 
-def create_app(arbiter: Arbiter, conversations: ConversationHistory, profile: ProfileManager) -> FastAPI:
+def create_app(
+    arbiter: Arbiter,
+    conversations: ConversationHistory,
+    profile: ProfileManager,
+    knowledge: KnowledgeBrowser,
+) -> FastAPI:
     from frosthaven_arbiter.web.routes import router
 
     app = FastAPI(title="Frosthaven Arbiter")
@@ -41,6 +48,7 @@ def create_app(arbiter: Arbiter, conversations: ConversationHistory, profile: Pr
         arbiter=arbiter,
         conversations=conversations,
         profile=profile,
+        knowledge=knowledge,
         templates=Jinja2Templates(directory=str(_TEMPLATES_DIR)),
     )
     app.include_router(router)

@@ -16,6 +16,7 @@ from frosthaven_arbiter.config import load_settings
 from frosthaven_arbiter.conversations import ConversationHistory
 from frosthaven_arbiter.database import Database
 from frosthaven_arbiter.inference import LlamaCppChatModel, LlamaCppEmbeddingModel
+from frosthaven_arbiter.knowledge import KnowledgeBrowser
 from frosthaven_arbiter.profile import ProfileManager
 from frosthaven_arbiter.retrieval.authoritative import AuthoritativeRetrieval
 from frosthaven_arbiter.sources.fetch import GitHubSourceFetcher
@@ -48,7 +49,8 @@ def create_production_app():
     arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
-    return create_app(arbiter, conversations, profile)
+    knowledge = KnowledgeBrowser(database)
+    return create_app(arbiter, conversations, profile, knowledge)
 
 
 def _serve_command() -> None:

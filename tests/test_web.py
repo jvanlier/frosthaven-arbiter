@@ -14,6 +14,7 @@ from frosthaven_arbiter.arbitration.arbiter import Arbiter
 from frosthaven_arbiter.conversations import ConversationHistory
 from frosthaven_arbiter.database import Database
 from frosthaven_arbiter.domain import SourceKey
+from frosthaven_arbiter.knowledge import KnowledgeBrowser
 from frosthaven_arbiter.profile import ProfileManager
 from frosthaven_arbiter.retrieval.authoritative import AuthoritativeRetrieval
 from frosthaven_arbiter.sources.sync import SourceSynchronizer
@@ -39,7 +40,8 @@ def _make_client(database: Database, settings, chat_response: str) -> TestClient
     arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
-    app = create_app(arbiter, conversations, profile)
+    knowledge = KnowledgeBrowser(database)
+    app = create_app(arbiter, conversations, profile, knowledge)
     return TestClient(app)
 
 
@@ -606,7 +608,8 @@ def test_streaming_endpoint_reports_error_on_model_failure(indexed_database: Dat
     arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
     conversations = ConversationHistory(indexed_database)
     profile = ProfileManager(indexed_database)
-    app = create_app(arbiter, conversations, profile)
+    knowledge = KnowledgeBrowser(indexed_database)
+    app = create_app(arbiter, conversations, profile, knowledge)
     client = TestClient(app)
     conversation_id = client.post("/conversations").json()["id"]
 
@@ -620,3 +623,136 @@ def test_streaming_endpoint_reports_error_on_model_failure(indexed_database: Dat
     assert events[-1]["type"] == "result"
     result = events[-1]
     assert "badge-abstention" in result["html"]
+
+
+def test_layout_has_knowledge_navigation_link(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'href="/knowledge"' in response.text
+
+
+def test_knowledge_page_defaults_to_rulebook_first_section(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge")
+
+    assert response.status_code == 200
+    assert "Frosthaven Arbiter" in response.text  # full layout on direct navigation
+    browser = KnowledgeBrowser(indexed_database)
+    first_section = browser.list_sections(SourceKey.RULEBOOK, frozenset())[0]
+    assert first_section.heading_path[-1] in response.text
+
+
+def test_knowledge_page_selects_faq_source(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge?source=faq")
+
+    assert response.status_code == 200
+    assert "Can I teleport into the hex I currently occupy" in response.text
+
+
+def test_knowledge_page_shows_a_specific_section(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge?source=rulebook&section=frosthaven-rulebook-transcription-fixture/road-events")
+
+    assert response.status_code == 200
+    assert "Road events occur when the party travels" in response.text
+
+
+def test_knowledge_htmx_request_returns_partial(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert "<html" not in response.text
+    assert 'id="knowledge"' in response.text
+
+
+def test_knowledge_chunks_render_in_position_order(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    browser = KnowledgeBrowser(indexed_database)
+    sections = browser.list_sections(SourceKey.RULEBOOK, frozenset())
+    road_events = next(s for s in sections if "Road Events" in s.heading_path)
+
+    response = client.get(f"/knowledge?source=rulebook&section={road_events.section_key}")
+
+    assert response.status_code == 200
+    chunks = browser.list_chunks(SourceKey.RULEBOOK, road_events.section_key, frozenset())
+    positions = [response.text.find(f"#{chunk.chunk_id} ") for chunk in chunks]
+    assert positions == sorted(positions)
+    assert all(p != -1 for p in positions)
+
+
+def test_knowledge_chunk_shows_diagnostics_metadata(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge")
+
+    assert response.status_code == 200
+    assert "Content SHA-256" in response.text
+    assert "Embedding input" in response.text
+    assert "fake-embedding-model" in response.text
+
+
+def test_knowledge_protected_chunk_is_redacted_by_default(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    browser = KnowledgeBrowser(indexed_database)
+    sections = browser.list_sections(SourceKey.RULEBOOK, frozenset())
+    monster_section = next(s for s in sections if "Monster Movement" in s.heading_path)
+
+    response = client.get(f"/knowledge?source=rulebook&section={monster_section.section_key}")
+
+    assert response.status_code == 200
+    assert "protected sticker content describing a locked scenario reward" not in response.text
+    assert "Locked." in response.text
+    assert "Sticker 4" in response.text  # scope label may render, body must not
+
+
+def test_knowledge_protected_chunk_reveals_after_scope_unlocked(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+    client.put("/profile", data={"campaign_context": "", "unlocked_scope_keys": ["rulebook:sticker-4"]})
+    browser = KnowledgeBrowser(indexed_database)
+    sections = browser.list_sections(SourceKey.RULEBOOK, frozenset())
+    monster_section = next(s for s in sections if "Monster Movement" in s.heading_path)
+
+    response = client.get(f"/knowledge?source=rulebook&section={monster_section.section_key}")
+
+    assert response.status_code == 200
+    assert "protected sticker content describing a locked scenario reward" in response.text
+
+
+def test_knowledge_unsynchronized_source_shows_empty_state(database: Database, settings):
+    client = _make_client(database, settings, "{}")
+
+    response = client.get("/knowledge")
+
+    assert response.status_code == 200
+    assert "not been synchronized" in response.text
+
+
+def test_knowledge_invalid_source_falls_back_to_rulebook(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge?source=not-a-real-source")
+
+    assert response.status_code == 200
+    browser = KnowledgeBrowser(indexed_database)
+    first_section = browser.list_sections(SourceKey.RULEBOOK, frozenset())[0]
+    assert first_section.heading_path[-1] in response.text
+
+
+def test_knowledge_invalid_section_falls_back_to_first_section(indexed_database: Database, settings):
+    client = _make_client(indexed_database, settings, "{}")
+
+    response = client.get("/knowledge?source=rulebook&section=not-a-real-section")
+
+    assert response.status_code == 200
+    browser = KnowledgeBrowser(indexed_database)
+    first_section = browser.list_sections(SourceKey.RULEBOOK, frozenset())[0]
+    assert first_section.heading_path[-1] in response.text
