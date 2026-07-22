@@ -17,6 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 from markupsafe import Markup
+from starlette.responses import Response
+from starlette.types import Scope
 
 from frosthaven_arbiter.arbitration.arbiter import Arbiter
 from frosthaven_arbiter.conversations import ConversationHistory
@@ -25,11 +27,22 @@ from frosthaven_arbiter.profile import ProfileManager
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
+_ARBITER_JS_VERSION = (_STATIC_DIR / "arbiter.js").stat().st_mtime_ns
 _MESSAGE_MARKDOWN = MarkdownIt("commonmark", {"html": False})
 
 
 def _render_message_markdown(text: str) -> Markup:
     return Markup(_MESSAGE_MARKDOWN.render(text))
+
+
+class NoCacheJavaScriptStaticFiles(StaticFiles):
+    """Serve the streaming client with mandatory revalidation."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if path == "arbiter.js":
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 @dataclass
@@ -52,6 +65,7 @@ def create_app(
 
     app = FastAPI(title="Frosthaven Arbiter")
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+    templates.env.globals["arbiter_js_version"] = _ARBITER_JS_VERSION
     templates.env.filters["message_markdown"] = _render_message_markdown
     app.state.arbiter_state = AppState(
         arbiter=arbiter,
@@ -61,5 +75,5 @@ def create_app(
         templates=templates,
     )
     app.include_router(router)
-    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+    app.mount("/static", NoCacheJavaScriptStaticFiles(directory=str(_STATIC_DIR)), name="static")
     return app

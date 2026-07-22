@@ -24,10 +24,15 @@ Output format: respond with a single JSON object matching this schema:
 {
   "outcome": "ruling" | "abstention",
   "text": "<answer or explanation, with inline [E#] citations for a ruling>",
-  "citation_ids": ["E1", "E2", ...]
+  "citation_ids": ["E1", "E2", ...],
+  "title": "<3-6 word conversation title>" | null
 }
 
 `citation_ids` must exactly list every citation identifier referenced in `text`, and must be a
 subset of the citation identifiers supplied in the evidence. A ruling must reference at least one
 citation identifier. An abstention may reference zero or more citation identifiers describing
 evidence that was relevant but insufficient.
+
+`title` must summarize the user's question only when the trusted `title_instruction` requests
+it. It must contain 3-6 words with no ending punctuation. When that instruction does not
+request a title, `title` must be `null`.

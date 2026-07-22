@@ -37,7 +37,7 @@ async def indexed_database(database: Database, settings) -> Database:
 def _make_client(database: Database, settings, chat_response: str) -> TestClient:
     retrieval = AuthoritativeRetrieval(database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = FakeChatModel(response=chat_response)
-    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
     knowledge = KnowledgeBrowser(database)
@@ -143,11 +143,11 @@ def test_create_conversation_renders_new_conversation_for_htmx(indexed_database:
     assert "titling…" not in response.text
 
 
-def test_ask_first_question_triggers_title_polling_via_oob_swap(indexed_database: Database, settings):
+def test_ask_first_question_returns_title_via_oob_swap(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
         settings,
-        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"], "title": "Road Event Rules"}',
     )
     conversation_id = client.post("/conversations").json()["id"]
 
@@ -156,15 +156,17 @@ def test_ask_first_question_triggers_title_polling_via_oob_swap(indexed_database
     )
 
     assert response.status_code == 200
-    assert 'hx-swap-oob="true"' in response.text
-    assert "titling…" in response.text
+    assert '<h2 id="conversation-title" hx-swap-oob="true">Road Event Rules</h2>' in response.text
+    assert "hx-get" not in response.text
+    assert "hx-trigger" not in response.text
+    assert "titling…" not in response.text
 
 
-def test_ask_second_question_does_not_retrigger_title_polling(indexed_database: Database, settings):
+def test_ask_second_question_does_not_return_title_oob_swap(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
         settings,
-        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"], "title": "Road Event Rules"}',
     )
     conversation_id = client.post("/conversations").json()["id"]
     client.post(f"/conversations/{conversation_id}/questions", data={"question": "First question?"})
@@ -434,18 +436,6 @@ def test_profile_page_has_back_button(indexed_database: Database, settings):
     assert "← Back" in response.text
 
 
-def test_title_endpoint_polling_when_null(indexed_database: Database, settings):
-    client = _make_client(indexed_database, settings, "{}")
-    conversation_id = client.post("/conversations").json()["id"]
-
-    response = client.get(f"/conversations/{conversation_id}/title")
-
-    assert response.status_code == 200
-    assert "hx-get" in response.text
-    assert "hx-trigger" in response.text
-    assert "titling…" in response.text
-
-
 def test_citation_detail_page_renders(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
@@ -491,20 +481,6 @@ def test_message_citation_link_targets_citation_page(indexed_database: Database,
     assert f'href="/citations/{message.id}/E1"' in response.text
 
 
-def test_title_endpoint_stops_polling_when_set(indexed_database: Database, settings):
-    from frosthaven_arbiter.conversations import ConversationHistory
-
-    conversations = ConversationHistory(indexed_database)
-    conversation_id = conversations.create(title="My Campaign")
-
-    client = _make_client(indexed_database, settings, "{}")
-    response = client.get(f"/conversations/{conversation_id}/title")
-
-    assert response.status_code == 200
-    assert "hx-get" not in response.text
-    assert "My Campaign" in response.text
-
-
 def test_conversation_form_has_streaming_attributes_and_overlay(indexed_database: Database, settings):
     client = _make_client(indexed_database, settings, "{}")
     conversation_id = client.post("/conversations").json()["id"]
@@ -522,6 +498,7 @@ def test_layout_loads_arbiter_js(indexed_database: Database, settings):
     response = client.get("/")
 
     assert "/static/arbiter.js" in response.text
+    assert 'src="/static/arbiter.js?v=' in response.text
 
 
 def test_arbiter_js_is_served(indexed_database: Database, settings):
@@ -530,6 +507,7 @@ def test_arbiter_js_is_served(indexed_database: Database, settings):
     response = client.get("/static/arbiter.js")
 
     assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
 
 
 def _read_ndjson_events(response) -> list[dict]:
@@ -562,11 +540,11 @@ def test_streaming_endpoint_emits_status_events_before_result(indexed_database: 
     assert all(event["message"] for event in status_events)
 
 
-def test_streaming_endpoint_result_html_echoes_question_and_timestamps(indexed_database: Database, settings):
+def test_streaming_endpoint_result_carries_title(indexed_database: Database, settings):
     client = _make_client(
         indexed_database,
         settings,
-        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"]}',
+        '{"outcome": "ruling", "text": "Draw a road event card.", "citation_ids": ["E1"], "title": "Road Event Rules"}',
     )
     conversation_id = client.post("/conversations").json()["id"]
 
@@ -580,6 +558,7 @@ def test_streaming_endpoint_result_html_echoes_question_and_timestamps(indexed_d
     assert "What happens during road events?" in result["html"]
     assert "badge-ruling" in result["html"]
     assert result["html"].count('class="message-time"') == 2
+    assert result["title"] == "Road Event Rules"
 
 
 def test_streaming_endpoint_result_html_is_escaped_and_validated(indexed_database: Database, settings):
@@ -626,7 +605,7 @@ def test_streaming_endpoint_reports_error_on_model_failure(indexed_database: Dat
 
     retrieval = AuthoritativeRetrieval(indexed_database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = FakeChatModel(raise_error=True)
-    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+    arbiter = Arbiter(indexed_database, retrieval, chat_model, settings.paths.prompt)
     conversations = ConversationHistory(indexed_database)
     profile = ProfileManager(indexed_database)
     knowledge = KnowledgeBrowser(indexed_database)

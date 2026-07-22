@@ -161,13 +161,6 @@ class ConversationHistory:
                 (title, conversation_id),
             )
 
-    def get_title(self, conversation_id: int) -> str | None:
-        with self._database.connect() as conn:
-            row = conn.execute("SELECT title FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
-            if row is None:
-                raise KeyError(f"no conversation {conversation_id}")
-            return row["title"]
-
     def recent_complete_messages(self, conversation_id: int, limit: int) -> tuple[Message, ...]:
         conversation = self.get(conversation_id)
         complete = [m for m in conversation.messages if m.status == "complete"]

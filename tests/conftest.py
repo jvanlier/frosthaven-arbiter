@@ -36,7 +36,6 @@ def settings(tmp_path: Path) -> Settings:
             database=tmp_path / "arbiter.sqlite3",
             snapshots=tmp_path / "snapshots",
             prompt=Path(__file__).resolve().parent.parent / "config" / "arbitration-prompt.txt",
-            title_prompt=Path(__file__).resolve().parent.parent / "config" / "title-prompt.txt",
         ),
         web=WebSettings(host="127.0.0.1", port=8088),
         embedding_model=ModelSettings(base_url="http://127.0.0.1:9001/v1", model_path="fake-embed", timeout_seconds=5),
