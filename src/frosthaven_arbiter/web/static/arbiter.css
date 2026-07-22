@@ -51,6 +51,15 @@ h1 {
     letter-spacing: -0.04em;
 }
 
+h1 a {
+    color: inherit;
+    text-decoration: none;
+}
+
+h1 a:hover {
+    text-decoration: underline;
+}
+
 h2 {
     margin: 0 0 1.25rem;
     font-size: 1.55rem;
