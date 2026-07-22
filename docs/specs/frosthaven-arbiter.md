@@ -97,7 +97,7 @@ All source snapshots, models, embeddings, configuration, profiles, conversations
 
 ### Application Shape
 
-- The application uses Python 3.12 managed with `uv`.
+- The application uses Python 3.14 managed with `uv`.
 - The browser interface is server-rendered with FastAPI, Jinja templates, and locally vendored HTMX. No JavaScript package build or content delivery network is required.
 - The application stores structured state in SQLite and uses SQLite FTS5 for lexical retrieval.
 - Dense embeddings are stored with chunk metadata in SQLite and loaded into a normalized NumPy matrix for exact similarity search. The expected corpus is small enough that an approximate-nearest-neighbor database is unnecessary.
