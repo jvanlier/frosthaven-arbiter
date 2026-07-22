@@ -311,6 +311,27 @@ def test_model_text_is_escaped(indexed_database: Database, settings):
     assert "&lt;script&gt;" in response.text
 
 
+def test_model_markdown_renders_structure_and_emphasis(indexed_database: Database, settings):
+    ruling = {
+        "outcome": "ruling",
+        "text": "Poison functions as follows:\n\n- **Effect**: Attacks gain +1.\n- **Removal**: Healing removes it.",
+        "citation_ids": ["E1"],
+    }
+    client = _make_client(indexed_database, settings, json.dumps(ruling))
+    conversation_id = client.post("/conversations").json()["id"]
+
+    response = client.post(
+        f"/conversations/{conversation_id}/questions",
+        data={"question": "How does poison work?"},
+    )
+
+    assert response.status_code == 200
+    assert "<p>Poison functions as follows:</p>" in response.text
+    assert "<li><strong>Effect</strong>: Attacks gain +1.</li>" in response.text
+    assert "<li><strong>Removal</strong>: Healing removes it.</li>" in response.text
+    assert "**Effect**" not in response.text
+
+
 def test_reload_conversation_page_is_styled(indexed_database: Database, settings):
     client = _make_client(indexed_database, settings, "{}")
     conversation_id = client.post("/conversations").json()["id"]

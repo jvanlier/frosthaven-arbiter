@@ -15,6 +15,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
+from markupsafe import Markup
 
 from frosthaven_arbiter.arbitration.arbiter import Arbiter
 from frosthaven_arbiter.conversations import ConversationHistory
@@ -23,6 +25,11 @@ from frosthaven_arbiter.profile import ProfileManager
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
+_MESSAGE_MARKDOWN = MarkdownIt("commonmark", {"html": False})
+
+
+def _render_message_markdown(text: str) -> Markup:
+    return Markup(_MESSAGE_MARKDOWN.render(text))
 
 
 @dataclass
@@ -44,12 +51,14 @@ def create_app(
     from frosthaven_arbiter.web.routes import router
 
     app = FastAPI(title="Frosthaven Arbiter")
+    templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+    templates.env.filters["message_markdown"] = _render_message_markdown
     app.state.arbiter_state = AppState(
         arbiter=arbiter,
         conversations=conversations,
         profile=profile,
         knowledge=knowledge,
-        templates=Jinja2Templates(directory=str(_TEMPLATES_DIR)),
+        templates=templates,
     )
     app.include_router(router)
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
