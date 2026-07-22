@@ -120,12 +120,12 @@ def live_arbiter_server(tmp_path: Path, settings) -> Iterator[tuple[str, FakeCha
 
     retrieval = AuthoritativeRetrieval(database, FakeEmbeddingModel(), settings.retrieval)
     chat_model = _SlowFakeChatModel(
-        responses=[
-            '{"outcome": "ruling", "text": "Draw a road event card [E1].", "citation_ids": ["E1"]}',
-            "Road Events",
-        ]
+        response=(
+            '{"outcome": "ruling", "text": "Draw a road event card [E1].", '
+            '"citation_ids": ["E1"], "title": "Road Events"}'
+        )
     )
-    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt, settings.paths.title_prompt)
+    arbiter = Arbiter(database, retrieval, chat_model, settings.paths.prompt)
     conversations = ConversationHistory(database)
     profile = ProfileManager(database)
     knowledge = KnowledgeBrowser(database)
@@ -140,7 +140,7 @@ def live_arbiter_server(tmp_path: Path, settings) -> Iterator[tuple[str, FakeCha
 
 
 def test_ask_question_streams_and_renders_ruling(page: Page, live_arbiter_server: tuple[str, FakeChatModel]) -> None:
-    base_url, _ = live_arbiter_server
+    base_url, chat_model = live_arbiter_server
     page.goto(base_url)
     page.get_by_role("button", name="New conversation").click()
     page.wait_for_url("**/conversations/*")
@@ -172,6 +172,8 @@ def test_ask_question_streams_and_renders_ruling(page: Page, live_arbiter_server
     expect(page.locator("#messages .badge-ruling")).to_be_visible()
     expect(page.locator("#messages")).to_contain_text("Draw a road event card")
     expect(page.locator("#messages .error")).to_have_count(0)
+    expect(page.locator("#conversation-title")).to_have_text("Road Events")
+    assert len(chat_model.calls) == 1
 
     expect(textarea).to_have_value("")
     expect(textarea).to_be_enabled()

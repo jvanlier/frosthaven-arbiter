@@ -22,7 +22,6 @@ class PathSettings:
     database: Path
     snapshots: Path
     prompt: Path
-    title_prompt: Path
 
 
 @dataclass(frozen=True)
@@ -107,7 +106,6 @@ def load_settings(defaults_path: Path | None = None, override_path: Path | None 
         database=(root / raw_paths["database"]).resolve(),
         snapshots=(root / raw_paths["snapshots"]).resolve(),
         prompt=(root / raw_paths["prompt"]).resolve(),
-        title_prompt=(root / raw_paths["title_prompt"]).resolve(),
     )
     web = WebSettings(host=raw_web["host"], port=int(raw_web["port"]))
     models: dict[str, Any] = raw["models"]

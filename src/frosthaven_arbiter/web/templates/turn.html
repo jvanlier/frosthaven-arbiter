@@ -1,8 +1,6 @@
 {% for message in messages %}
 {% include "_message.html" %}
 {% endfor %}
-{% if titling_started %}
-<h2 id="conversation-title" hx-swap-oob="true" hx-get="/conversations/{{ conversation_id }}/title" hx-trigger="every 2s" hx-swap="outerHTML">
-  Conversation {{ conversation_id }} <span class="title-loading">titling…</span>
-</h2>
+{% if title is not none %}
+<h2 id="conversation-title" hx-swap-oob="true">{{ title }}</h2>
 {% endif %}

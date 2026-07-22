@@ -133,11 +133,9 @@
                         }
                         var label = form.querySelector("label[for=question]");
                         if (label) label.remove();
-                        if (event.titling_started && conversationId && window.htmx) {
-                            window.htmx.ajax("GET", "/conversations/" + conversationId + "/title", {
-                                target: "#conversation-title",
-                                swap: "outerHTML",
-                            });
+                        if (event.title !== null) {
+                            var conversationTitle = document.getElementById("conversation-title");
+                            if (conversationTitle) conversationTitle.textContent = event.title;
                         }
                     } else if (event.type === "error") {
                         showError(form, event.message || "The Arbiter could not process that question.");

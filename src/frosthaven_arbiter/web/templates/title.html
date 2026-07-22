@@ -1,8 +1,0 @@
-<h2 id="conversation-title"
-    {% if title is none %}
-    hx-get="/conversations/{{ conversation_id }}/title"
-    hx-trigger="every 2s"
-    hx-swap="outerHTML"
-    {% endif %}>
-  {% if title %}{{ title }}{% else %}Conversation {{ conversation_id }} <span class="title-loading">titling…</span>{% endif %}
-</h2>

@@ -2,7 +2,6 @@
 database = "var/arbiter.sqlite3"
 snapshots = "var/sources"
 prompt = "config/arbitration-prompt.txt"
-title_prompt = "config/title-prompt.txt"
 
 [web]
 host = "127.0.0.1"

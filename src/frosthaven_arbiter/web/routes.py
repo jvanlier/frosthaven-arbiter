@@ -50,13 +50,6 @@ async def get_conversation(request: Request, conversation_id: int) -> HTMLRespon
     return _render_page(request, state, "conversation.html", {"conversation": conversation})
 
 
-@router.get("/conversations/{conversation_id}/title", response_class=HTMLResponse)
-async def get_conversation_title(request: Request, conversation_id: int) -> HTMLResponse:
-    state = _state(request)
-    title = state.conversations.get_title(conversation_id)
-    return state.templates.TemplateResponse(request, "title.html", {"conversation_id": conversation_id, "title": title})
-
-
 @router.post("/conversations/{conversation_id}/questions", response_class=HTMLResponse)
 async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
     state = _state(request)
@@ -72,7 +65,7 @@ async def ask_question(request: Request, conversation_id: int) -> HTMLResponse:
         {
             "messages": conversation.messages[-2:],
             "conversation_id": conversation_id,
-            "titling_started": result.titling_started,
+            "title": result.title,
         },
     )
 
@@ -108,13 +101,13 @@ async def ask_question_stream(request: Request, conversation_id: int) -> Streami
                 {
                     "messages": conversation.messages[-2:],
                     "conversation_id": conversation_id,
-                    "titling_started": False,
+                    "title": None,
                 }
             )
             result_payload = {
                 "type": "result",
                 "html": html,
-                "titling_started": result.titling_started,
+                "title": result.title,
             }
             await queue.put(("__result__", json.dumps(result_payload)))
         except Exception:
