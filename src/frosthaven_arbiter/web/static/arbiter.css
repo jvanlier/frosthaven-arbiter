@@ -225,6 +225,20 @@ textarea {
 
 .message p { margin: 0.35rem 0; line-height: 1.5; }
 
+.message-body > :first-child { margin-top: 0.55rem; }
+.message-body > :last-child { margin-bottom: 0.35rem; }
+
+.message-body ul,
+.message-body ol {
+    margin: 0.55rem 0 0.55rem 1.4rem;
+    padding: 0;
+}
+
+.message-body li {
+    margin: 0.25rem 0;
+    line-height: 1.5;
+}
+
 .outcome-ruling { border-left-color: var(--pine); background: var(--ruling-wash); }
 
 .outcome-abstention { border-left-color: var(--amber); background: var(--abstention-wash); }

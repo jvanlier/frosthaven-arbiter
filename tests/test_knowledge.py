@@ -45,9 +45,16 @@ def test_list_sources_counts_locked_protected_chunks(indexed_database: Database)
     assert rulebook_locked.protected_chunks >= 1
     assert rulebook_locked.locked_chunks == rulebook_locked.protected_chunks
 
-    unlocked = browser.list_sources(frozenset({"rulebook:sticker-4"}))
-    rulebook_unlocked = next(s for s in unlocked if s.source_key == SourceKey.RULEBOOK)
-    assert rulebook_unlocked.locked_chunks == 0
+    partially_unlocked = browser.list_sources(frozenset({"rulebook:sticker-4"}))
+    rulebook_partially_unlocked = next(s for s in partially_unlocked if s.source_key == SourceKey.RULEBOOK)
+    assert rulebook_partially_unlocked.locked_chunks == rulebook_locked.locked_chunks - 1
+
+    all_fixture_scopes = frozenset(
+        {"rulebook:sticker-1", "rulebook:sticker-3", "rulebook:sticker-4", "rulebook:sticker-13"}
+    )
+    fully_unlocked = browser.list_sources(all_fixture_scopes)
+    rulebook_fully_unlocked = next(s for s in fully_unlocked if s.source_key == SourceKey.RULEBOOK)
+    assert rulebook_fully_unlocked.locked_chunks == 0
 
 
 def test_list_sections_orders_by_first_position(indexed_database: Database):

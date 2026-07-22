@@ -2,7 +2,7 @@
     {% if message.outcome_kind %}
     <span class="badge badge-{{ message.outcome_kind }}">{{ message.outcome_kind | capitalize }}</span>
     {% endif %}
-    <p>{{ message.content }}</p>
+    <div class="message-body">{{ message.content | message_markdown }}</div>
     {% if message.citations %}
     <ul class="citations">
         {% for citation in message.citations %}
