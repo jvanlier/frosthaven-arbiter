@@ -4,42 +4,32 @@ Local Frosthaven rules arbitration backed by authoritative rulebook and FAQ sour
 
 ## Run Locally
 
-The Arbiter requires two `llama-server` processes. Keep each process running in its own terminal.
+The Arbiter requires a chat and an embedding `llama-server` process. Keep each running in its own terminal.
 
 ### 1. Start The Chat Model
 
+From the repository root, run:
+
 ```bash
-llama-server \
-  -hf unsloth/Qwen3.6-27B-MTP-GGUF:Q8_0 \
-  --spec-type draft-mtp \
-  -ngl 999 \
-  -fa on \
-  -c 131072 \
-  --port 8080 \
-  --host 127.0.0.1
+just serve-chat
 ```
 
 ### 2. Start The Embedding Model
 
+From the repository root, run:
+
 ```bash
-llama-server \
-  -hf gpustack/bge-m3-GGUF:Q8_0 \
-  --embeddings \
-  --parallel 4 \
-  --ubatch-size 1024 \
-  -ngl 999 \
-  --port 8081 \
-  --host 127.0.0.1
+just serve-embed
 ```
 
-The `--ubatch-size 1024` setting is required for the longest indexed source chunks.
+The `serve-embed` recipe sets `--ubatch-size 1024`, which is required for the longest indexed source chunks.
 
 ### 3. Synchronize Authoritative Sources
 
 From the repository root, run:
 
 ```bash
-uv run frosthaven-arbiter sync
+just sync-sources
 ```
 
 Run synchronization once before first use and again whenever the indexed rulebook or FAQ should be refreshed.
@@ -47,7 +37,7 @@ Run synchronization once before first use and again whenever the indexed ruleboo
 ### 4. Start The Web Interface
 
 ```bash
-uv run frosthaven-arbiter serve
+just serve
 ```
 
 Open <http://127.0.0.1:8088>.

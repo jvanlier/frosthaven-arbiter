@@ -15,11 +15,18 @@ serve:
 
 serve-chat:
     llama-server \
-        -hf unsloth/Qwen3.6-27B-MTP-GGUF:Q8_0 \
+        -hf unsloth/Qwen3.8-27B-GGUF:UD-Q8_K_XL \
         --spec-type draft-mtp \
-        -ngl 999 \
+        --spec-draft-n-max 2 \
+        -ngl all \
+        -ngld all \
         -fa on \
         -c 131072 \
+        -np 1 \
+        -ctk q8_0 \
+        -ctv q8_0 \
+        -ctkd q8_0 \
+        -ctvd q8_0 \
         --port 8080 \
         --host 127.0.0.1
 
